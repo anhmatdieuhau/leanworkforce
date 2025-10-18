@@ -41,7 +41,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-white">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold" data-testid="app-title">AI Workforce OS</h1>
+          <h1 className="text-2xl font-bold" data-testid="app-title">Gemini Workforce Optimizer</h1>
           <div className="flex gap-3">
             <Button 
               variant="outline" 
@@ -120,7 +120,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-border mt-24 py-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>AI Workforce OS - Powered by Google Gemini & Jira Integration</p>
+          <p>Gemini Workforce Optimizer - Powered by Google Gemini AI & Jira Integration</p>
         </div>
       </footer>
     </div>

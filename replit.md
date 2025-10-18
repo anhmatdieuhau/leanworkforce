@@ -89,6 +89,14 @@ Preferred communication style: Simple, everyday language.
 
 **Google Gemini AI**: Primary AI service for natural language processing tasks including skill extraction, semantic matching, and risk analysis. Configured via `@google/genai` SDK with API key authentication.
 
+**Rate Limiting**: All Gemini AI functions protected by rate limiter (`server/rate-limiter.ts`) with 30-second delays and 3 retry attempts to respect free tier quota (2 requests/min). Applied to:
+- `generateSkillMap()` - Skill extraction from project descriptions
+- `analyzeCVText()` - CV parsing and candidate profile extraction
+- `calculateFitScore()` - Multi-factor candidate-project matching (skill overlap, experience match, soft skill relevance)
+- `predictRisk()` - Risk prediction for milestone delays
+
+**Data Validation**: All AI-generated fit scores (skillOverlap, experienceMatch, softSkillRelevance) are rounded to integers using `Math.round()` before database insertion to ensure type compatibility with PostgreSQL integer columns.
+
 **Jira Cloud API**: Integration via `jira.js` Version3Client with dual authentication approach:
 
 **Authentication Methods**:

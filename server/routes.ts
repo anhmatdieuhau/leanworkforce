@@ -82,10 +82,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   await storage.createFitScore({
                     candidateId: candidate.id,
                     milestoneId: milestone.id,
-                    score: fitAnalysis.score,
-                    skillOverlap: fitAnalysis.skillOverlap,
-                    experienceMatch: fitAnalysis.experienceMatch,
-                    softSkillRelevance: fitAnalysis.softSkillRelevance,
+                    score: Math.round(fitAnalysis.score),
+                    skillOverlap: Math.round(fitAnalysis.skillOverlap),
+                    experienceMatch: Math.round(fitAnalysis.experienceMatch),
+                    softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
                     reasoning: fitAnalysis.reasoning,
                   });
                 } catch (error) {
@@ -240,10 +240,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       await storage.createFitScore({
                         candidateId: candidate.id,
                         milestoneId: milestone.id,
-                        score: fitAnalysis.score,
-                        skillOverlap: fitAnalysis.skillOverlap,
-                        experienceMatch: fitAnalysis.experienceMatch,
-                        softSkillRelevance: fitAnalysis.softSkillRelevance,
+                        score: Math.round(fitAnalysis.score),
+                        skillOverlap: Math.round(fitAnalysis.skillOverlap),
+                        experienceMatch: Math.round(fitAnalysis.experienceMatch),
+                        softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
                         reasoning: fitAnalysis.reasoning,
                       });
                     } catch (error) {
@@ -331,10 +331,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       if (existingFitScore) {
                         // Update existing fit score
                         await storage.updateFitScore(existingFitScore.id, {
-                          score: fitAnalysis.score,
-                          skillOverlap: fitAnalysis.skillOverlap,
-                          experienceMatch: fitAnalysis.experienceMatch,
-                          softSkillRelevance: fitAnalysis.softSkillRelevance,
+                          score: Math.round(fitAnalysis.score),
+                          skillOverlap: Math.round(fitAnalysis.skillOverlap),
+                          experienceMatch: Math.round(fitAnalysis.experienceMatch),
+                          softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
                           reasoning: fitAnalysis.reasoning,
                         });
                       } else {
@@ -527,10 +527,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   await storage.createFitScore({
                     candidateId: candidate.id,
                     milestoneId: milestone.id,
-                    score: fitAnalysis.score,
-                    skillOverlap: fitAnalysis.skillOverlap,
-                    experienceMatch: fitAnalysis.experienceMatch,
-                    softSkillRelevance: fitAnalysis.softSkillRelevance,
+                    score: Math.round(fitAnalysis.score),
+                    skillOverlap: Math.round(fitAnalysis.skillOverlap),
+                    experienceMatch: Math.round(fitAnalysis.experienceMatch),
+                    softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
                     reasoning: fitAnalysis.reasoning,
                   });
                 }
@@ -598,10 +598,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fitScore = await storage.createFitScore({
         candidateId,
         milestoneId,
-        score: fitAnalysis.score,
-        skillOverlap: fitAnalysis.skillOverlap,
-        experienceMatch: fitAnalysis.experienceMatch,
-        softSkillRelevance: fitAnalysis.softSkillRelevance,
+        score: Math.round(fitAnalysis.score),
+        skillOverlap: Math.round(fitAnalysis.skillOverlap),
+        experienceMatch: Math.round(fitAnalysis.experienceMatch),
+        softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
         reasoning: fitAnalysis.reasoning,
       });
 
@@ -752,10 +752,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.createFitScore({
                 candidateId: candidate!.id,
                 milestoneId: milestone.id,
-                score: fitAnalysis.score,
-                skillOverlap: fitAnalysis.skillOverlap,
-                experienceMatch: fitAnalysis.experienceMatch,
-                softSkillRelevance: fitAnalysis.softSkillRelevance,
+                score: Math.round(fitAnalysis.score),
+                skillOverlap: Math.round(fitAnalysis.skillOverlap),
+                experienceMatch: Math.round(fitAnalysis.experienceMatch),
+                softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
                 reasoning: fitAnalysis.reasoning,
               });
             } catch (error) {

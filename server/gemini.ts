@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { geminiRateLimiter } from "./rate-limiter";
 
 // Gemini AI integration for Lean Workforce
 // Reference: javascript_gemini blueprint
@@ -40,8 +41,9 @@ export interface RiskAnalysis {
 
 // Generate AI skill map from milestone description
 export async function generateSkillMap(milestoneName: string, milestoneDescription: string): Promise<SkillMap> {
-  try {
-    const prompt = `Analyze this project milestone and extract structured skill requirements:
+  return geminiRateLimiter.executeWithRetry(async () => {
+    try {
+      const prompt = `Analyze this project milestone and extract structured skill requirements:
 
 Milestone: ${milestoneName}
 Description: ${milestoneDescription}
@@ -59,42 +61,44 @@ Return ONLY valid JSON in this exact format:
   "soft_skills": ["soft_skill1", "soft_skill2"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            milestone: { type: "string" },
-            required_skills: { 
-              type: "array",
-              items: { type: "string" }
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              milestone: { type: "string" },
+              required_skills: { 
+                type: "array",
+                items: { type: "string" }
+              },
+              experience_level: { type: "string" },
+              soft_skills: {
+                type: "array",
+                items: { type: "string" }
+              }
             },
-            experience_level: { type: "string" },
-            soft_skills: {
-              type: "array",
-              items: { type: "string" }
-            }
-          },
-          required: ["milestone", "required_skills", "experience_level", "soft_skills"]
-        }
-      },
-      contents: prompt,
-    });
+            required: ["milestone", "required_skills", "experience_level", "soft_skills"]
+          }
+        },
+        contents: prompt,
+      });
 
-    const result = JSON.parse(response.text || "{}");
-    return result as SkillMap;
-  } catch (error) {
-    console.error("Error generating skill map:", error);
-    throw new Error("Failed to generate skill map with AI");
-  }
+      const result = JSON.parse(response.text || "{}");
+      return result as SkillMap;
+    } catch (error) {
+      console.error("Error generating skill map:", error);
+      throw new Error("Failed to generate skill map with AI");
+    }
+  });
 }
 
 // Analyze CV text and extract candidate profile
 export async function analyzeCVText(cvText: string): Promise<CVAnalysis> {
-  try {
-    const prompt = `Analyze this CV/resume text and extract the candidate's profile:
+  return geminiRateLimiter.executeWithRetry(async () => {
+    try {
+      const prompt = `Analyze this CV/resume text and extract the candidate's profile:
 
 ${cvText}
 
@@ -118,42 +122,43 @@ Return ONLY valid JSON in this exact format:
   "domain_expertise": ["domain1", "domain2"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            email: { type: "string" },
-            skills: {
-              type: "array",
-              items: { type: "string" }
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: "string" },
+              skills: {
+                type: "array",
+                items: { type: "string" }
+              },
+              experience: { type: "string" },
+              education: { type: "string" },
+              soft_skills: {
+                type: "array",
+                items: { type: "string" }
+              },
+              domain_expertise: {
+                type: "array",
+                items: { type: "string" }
+              }
             },
-            experience: { type: "string" },
-            education: { type: "string" },
-            soft_skills: {
-              type: "array",
-              items: { type: "string" }
-            },
-            domain_expertise: {
-              type: "array",
-              items: { type: "string" }
-            }
-          },
-          required: ["name", "skills", "experience", "education"]
-        }
-      },
-      contents: prompt,
-    });
+            required: ["name", "skills", "experience", "education"]
+          }
+        },
+        contents: prompt,
+      });
 
-    const result = JSON.parse(response.text || "{}");
-    return result as CVAnalysis;
-  } catch (error) {
-    console.error("Error analyzing CV:", error);
-    throw new Error("Failed to analyze CV with AI");
-  }
+      const result = JSON.parse(response.text || "{}");
+      return result as CVAnalysis;
+    } catch (error) {
+      console.error("Error analyzing CV:", error);
+      throw new Error("Failed to analyze CV with AI");
+    }
+  });
 }
 
 // Calculate fit score between candidate and milestone
@@ -162,8 +167,9 @@ export async function calculateFitScore(
   candidateExperience: string,
   skillMap: SkillMap
 ): Promise<FitScoreAnalysis> {
-  try {
-    const prompt = `Analyze the fit between this candidate and milestone requirements:
+  return geminiRateLimiter.executeWithRetry(async () => {
+    try {
+      const prompt = `Analyze the fit between this candidate and milestone requirements:
 
 Candidate Skills: ${candidateSkills.join(", ")}
 Candidate Experience: ${candidateExperience}
@@ -189,31 +195,39 @@ Return ONLY valid JSON:
   "reasoning": "Brief explanation of why this score was given"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            score: { type: "number" },
-            skillOverlap: { type: "number" },
-            experienceMatch: { type: "number" },
-            softSkillRelevance: { type: "number" },
-            reasoning: { type: "string" }
-          },
-          required: ["score", "skillOverlap", "experienceMatch", "softSkillRelevance", "reasoning"]
-        }
-      },
-      contents: prompt,
-    });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              score: { type: "number" },
+              skillOverlap: { type: "number" },
+              experienceMatch: { type: "number" },
+              softSkillRelevance: { type: "number" },
+              reasoning: { type: "string" }
+            },
+            required: ["score", "skillOverlap", "experienceMatch", "softSkillRelevance", "reasoning"]
+          }
+        },
+        contents: prompt,
+      });
 
-    const result = JSON.parse(response.text || "{}");
-    return result as FitScoreAnalysis;
-  } catch (error) {
-    console.error("Error calculating fit score:", error);
-    throw new Error("Failed to calculate fit score with AI");
-  }
+      const result = JSON.parse(response.text || "{}");
+      // Ensure all scores are integers
+      return {
+        score: Math.round(result.score || 0),
+        skillOverlap: Math.round(result.skillOverlap || 0),
+        experienceMatch: Math.round(result.experienceMatch || 0),
+        softSkillRelevance: Math.round(result.softSkillRelevance || 0),
+        reasoning: result.reasoning || "",
+      };
+    } catch (error) {
+      console.error("Error calculating fit score:", error);
+      throw new Error("Failed to calculate fit score with AI");
+    }
+  });
 }
 
 // Predict project risk based on delay
@@ -223,8 +237,9 @@ export async function predictRisk(
   delayPercentage: number,
   estimatedHours: number
 ): Promise<RiskAnalysis> {
-  try {
-    const prompt = `Analyze this project milestone for risk:
+  return geminiRateLimiter.executeWithRetry(async () => {
+    try {
+      const prompt = `Analyze this project milestone for risk:
 
 Milestone: ${milestoneName}
 Description: ${milestoneDescription}
@@ -251,38 +266,39 @@ Return ONLY valid JSON:
   "backup_required": true
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            risk_level: { 
-              type: "string",
-              enum: ["low", "medium", "high"]
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              risk_level: { 
+                type: "string",
+                enum: ["low", "medium", "high"]
+              },
+              delay_percentage: { type: "number" },
+              predicted_issues: {
+                type: "array",
+                items: { type: "string" }
+              },
+              recommendations: {
+                type: "array",
+                items: { type: "string" }
+              },
+              backup_required: { type: "boolean" }
             },
-            delay_percentage: { type: "number" },
-            predicted_issues: {
-              type: "array",
-              items: { type: "string" }
-            },
-            recommendations: {
-              type: "array",
-              items: { type: "string" }
-            },
-            backup_required: { type: "boolean" }
-          },
-          required: ["risk_level", "delay_percentage", "predicted_issues", "recommendations", "backup_required"]
-        }
-      },
-      contents: prompt,
-    });
+            required: ["risk_level", "delay_percentage", "predicted_issues", "recommendations", "backup_required"]
+          }
+        },
+        contents: prompt,
+      });
 
-    const result = JSON.parse(response.text || "{}");
-    return result as RiskAnalysis;
-  } catch (error) {
-    console.error("Error predicting risk:", error);
-    throw new Error("Failed to predict risk with AI");
-  }
+      const result = JSON.parse(response.text || "{}");
+      return result as RiskAnalysis;
+    } catch (error) {
+      console.error("Error predicting risk:", error);
+      throw new Error("Failed to predict risk with AI");
+    }
+  });
 }

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Lean Workforce is an intelligent talent matching and project continuity platform that leverages Google Gemini AI to automate workforce allocation. The system connects businesses creating projects with milestones to candidates uploading CVs, using AI for skill extraction, candidate-project matching, and real-time risk prediction through Jira API integration.
+Lean Workforce is an intelligent talent matching and project continuity platform powered by LeanfounderSpace that automates workforce allocation. The system connects businesses creating projects with milestones to candidates uploading CVs, using AI for skill extraction, candidate-project matching, and real-time risk prediction through Jira API integration.
 
 The platform operates as a dual-portal system with distinct Business and Candidate interfaces, featuring automated skill mapping, fit score calculation, and proactive project risk management.
 

@@ -101,7 +101,7 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-white mb-8">
               <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">Powered by Google Gemini AI</span>
+              <span className="text-sm font-medium">Powered by LeanfounderSpace</span>
             </div>
             
             <h2 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6" data-testid="landing-title">
@@ -349,7 +349,7 @@ export default function LandingPage() {
               <span className="font-semibold">Lean Workforce</span>
             </div>
             <div className="text-sm text-muted-foreground text-center md:text-left">
-              Powered by Google Gemini AI & Jira Integration
+              Powered by LeanfounderSpace
             </div>
           </div>
         </div>

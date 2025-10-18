@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { generateSkillMap, analyzeCVText, calculateFitScore, predictRisk } from "./gemini";
 import { syncJiraMilestones, getIssueProgress, monitorProjectDelays, fetchAllJiraProjects, fetchProjectSprints, fetchSprintIssues } from "./jira-service";
-import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema, insertJiraSettingsSchema } from "@shared/schema";
+import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema, insertJiraSettingsSchema, type Milestone } from "@shared/schema";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -187,20 +187,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const jiraProject of jiraProjects) {
         // Check if project already exists
         const existingProjects = await storage.getAllProjects();
-        const exists = existingProjects.find(p => p.jiraProjectKey === jiraProject.key);
+        let project = existingProjects.find(p => p.jiraProjectKey === jiraProject.key);
 
-        if (exists) {
-          console.log(`Project ${jiraProject.key} already exists, skipping...`);
-          continue;
+        if (project) {
+          console.log(`Project ${jiraProject.key} already exists, re-syncing tasks...`);
+        } else {
+          // Create project in database
+          project = await storage.createProject({
+            name: jiraProject.name,
+            description: jiraProject.description || `Imported from Jira project ${jiraProject.key}`,
+            businessUserId,
+            jiraProjectKey: jiraProject.key,
+          });
         }
-
-        // Create project in database
-        const project = await storage.createProject({
-          name: jiraProject.name,
-          description: jiraProject.description || `Imported from Jira project ${jiraProject.key}`,
-          businessUserId,
-          jiraProjectKey: jiraProject.key,
-        });
 
         // Fetch and create milestones from Jira sprints
         try {
@@ -256,6 +255,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else {
             // Sprint-based import: Each sprint becomes a milestone
+            // Get existing milestones to check for duplicates
+            const existingMilestones = await storage.getMilestonesByProject(project.id);
+            
             for (const sprint of sprints) {
               // Fetch all issues in this sprint
               const sprintIssues = await fetchSprintIssues(sprint.id, businessUserId);
@@ -286,16 +288,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error(`Failed to generate skill map for sprint ${sprint.name}:`, error);
               }
 
-              const milestone = await storage.createMilestone({
-                projectId: project.id,
-                name: sprint.name,
-                description: sprintDescription,
-                estimatedHours: totalHours || 80, // Default to 80 hours if no estimates
-                skillMap: skillMap as any,
-              });
+              // Check if milestone for this sprint already exists
+              const existingMilestone = existingMilestones.find(m => m.name === sprint.name);
+              
+              let milestone: Milestone;
+              if (existingMilestone) {
+                // Update existing milestone with latest data
+                console.log(`Updating existing milestone: ${sprint.name}`);
+                const updated = await storage.updateMilestone(existingMilestone.id, {
+                  description: sprintDescription,
+                  estimatedHours: totalHours || 80,
+                  skillMap: skillMap as any,
+                });
+                milestone = updated || existingMilestone;
+              } else {
+                // Create new milestone
+                milestone = await storage.createMilestone({
+                  projectId: project.id,
+                  name: sprint.name,
+                  description: sprintDescription,
+                  estimatedHours: totalHours || 80,
+                  skillMap: skillMap as any,
+                });
+              }
 
               // Auto-match candidates if skill map was generated
-              if (skillMap) {
+              if (skillMap && milestone) {
                 const candidates = await storage.getAllCandidates();
                 for (const candidate of candidates) {
                   if (candidate.skills && candidate.skills.length > 0) {
@@ -306,15 +324,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         skillMap
                       );
 
-                      await storage.createFitScore({
-                        candidateId: candidate.id,
-                        milestoneId: milestone.id,
-                        score: fitAnalysis.score,
-                        skillOverlap: fitAnalysis.skillOverlap,
-                        experienceMatch: fitAnalysis.experienceMatch,
-                        softSkillRelevance: fitAnalysis.softSkillRelevance,
-                        reasoning: fitAnalysis.reasoning,
-                      });
+                      // Check if fit score already exists for this candidate-milestone pair
+                      const existingFitScores = await storage.getTopCandidatesForMilestone(milestone.id, 1000);
+                      const existingFitScore = existingFitScores.find(fs => fs.candidate.id === candidate.id);
+
+                      if (existingFitScore) {
+                        // Update existing fit score
+                        await storage.updateFitScore(existingFitScore.id, {
+                          score: fitAnalysis.score,
+                          skillOverlap: fitAnalysis.skillOverlap,
+                          experienceMatch: fitAnalysis.experienceMatch,
+                          softSkillRelevance: fitAnalysis.softSkillRelevance,
+                          reasoning: fitAnalysis.reasoning,
+                        });
+                      } else {
+                        // Create new fit score
+                        await storage.createFitScore({
+                          candidateId: candidate.id,
+                          milestoneId: milestone.id,
+                          score: fitAnalysis.score,
+                          skillOverlap: fitAnalysis.skillOverlap,
+                          experienceMatch: fitAnalysis.experienceMatch,
+                          softSkillRelevance: fitAnalysis.softSkillRelevance,
+                          reasoning: fitAnalysis.reasoning,
+                        });
+                      }
                     } catch (error) {
                       console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
                     }

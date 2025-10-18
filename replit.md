@@ -112,16 +112,18 @@ Preferred communication style: Simple, everyday language.
 1. User clicks "Import from Jira" button on Business Dashboard
 2. System fetches all accessible Jira projects via API
 3. For each project:
+   - If project already exists in database: Re-syncs all tasks/milestones with latest Jira data
+   - If project is new: Creates database record
    - Detects sprints by querying issues with sprint information
    - **Sprint-based mode** (if sprints found): Each sprint becomes a milestone containing all its tasks
      - Fetches all issues within each sprint
      - Combines sprint goal and task list in milestone description
      - Calculates total estimated hours from all sprint tasks
      - Generates AI skill map from combined task summaries
+     - Updates existing milestones or creates new ones
    - **Issue-based mode** (fallback): Each issue becomes an individual milestone
-   - Creates database records for projects and milestones
-4. Auto-matches existing candidates to imported milestones using fit score calculation
-5. Dashboard refreshes with newly imported projects
+4. Auto-matches candidates to milestones using fit score calculation (updates existing or creates new)
+5. Dashboard refreshes with imported/updated projects
 
 **Database**: Neon PostgreSQL serverless database accessed via connection string environment variable. WebSocket constructor override enables serverless compatibility.
 

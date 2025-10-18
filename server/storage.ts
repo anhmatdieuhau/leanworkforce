@@ -36,6 +36,7 @@ export interface IStorage {
   getFitScoresByMilestone(milestoneId: string): Promise<FitScore[]>;
   getFitScoresByCandidate(candidateId: string): Promise<FitScore[]>;
   createFitScore(fitScore: InsertFitScore): Promise<FitScore>;
+  updateFitScore(id: string, data: Partial<InsertFitScore>): Promise<FitScore | undefined>;
   getTopCandidatesForMilestone(milestoneId: string, limit: number): Promise<Array<FitScore & { candidate: Candidate }>>;
   
   // Risk Alerts
@@ -132,6 +133,11 @@ export class DatabaseStorage implements IStorage {
   async createFitScore(insertFitScore: InsertFitScore): Promise<FitScore> {
     const [fitScore] = await db.insert(fitScores).values(insertFitScore).returning();
     return fitScore;
+  }
+
+  async updateFitScore(id: string, data: Partial<InsertFitScore>): Promise<FitScore | undefined> {
+    const [fitScore] = await db.update(fitScores).set(data).where(eq(fitScores.id, id)).returning();
+    return fitScore || undefined;
   }
 
   async getTopCandidatesForMilestone(milestoneId: string, limit: number = 10): Promise<Array<FitScore & { candidate: Candidate }>> {

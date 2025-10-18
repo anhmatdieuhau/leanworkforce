@@ -5,7 +5,7 @@ import multer from "multer";
 import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { generateSkillMap, analyzeCVText, calculateFitScore, predictRisk } from "./gemini";
-import { syncJiraMilestones, getIssueProgress, monitorProjectDelays, fetchAllJiraProjects } from "./jira-service";
+import { syncJiraMilestones, getIssueProgress, monitorProjectDelays, fetchAllJiraProjects, fetchProjectSprints, fetchSprintIssues } from "./jira-service";
 import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema, insertJiraSettingsSchema } from "@shared/schema";
 
 const upload = multer({ dest: "uploads/" });
@@ -202,50 +202,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
           jiraProjectKey: jiraProject.key,
         });
 
-        // Fetch and create milestones from Jira issues
+        // Fetch and create milestones from Jira sprints
         try {
-          const issues = await syncJiraMilestones(jiraProject.key, businessUserId);
+          const sprints = await fetchProjectSprints(jiraProject.key, businessUserId);
+          
+          if (sprints.length === 0) {
+            console.log(`No sprints found for project ${jiraProject.key}, falling back to issue-based import`);
+            // Fallback: use legacy approach for projects without sprints
+            const issues = await syncJiraMilestones(jiraProject.key, businessUserId);
+            
+            for (const issue of issues) {
+              let skillMap = null;
+              try {
+                skillMap = await generateSkillMap(issue.summary, issue.description || "");
+              } catch (error) {
+                console.error(`Failed to generate skill map for issue ${issue.key}:`, error);
+              }
 
-          for (const issue of issues) {
-            // Generate skill map using Gemini AI
-            let skillMap = null;
-            try {
-              skillMap = await generateSkillMap(issue.summary, issue.description || "");
-            } catch (error) {
-              console.error(`Failed to generate skill map for issue ${issue.key}:`, error);
+              const milestone = await storage.createMilestone({
+                projectId: project.id,
+                name: issue.summary,
+                description: issue.description || "",
+                estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
+                skillMap: skillMap as any,
+              });
+
+              if (skillMap) {
+                const candidates = await storage.getAllCandidates();
+                for (const candidate of candidates) {
+                  if (candidate.skills && candidate.skills.length > 0) {
+                    try {
+                      const fitAnalysis = await calculateFitScore(
+                        candidate.skills,
+                        candidate.experience || "",
+                        skillMap
+                      );
+
+                      await storage.createFitScore({
+                        candidateId: candidate.id,
+                        milestoneId: milestone.id,
+                        score: fitAnalysis.score,
+                        skillOverlap: fitAnalysis.skillOverlap,
+                        experienceMatch: fitAnalysis.experienceMatch,
+                        softSkillRelevance: fitAnalysis.softSkillRelevance,
+                        reasoning: fitAnalysis.reasoning,
+                      });
+                    } catch (error) {
+                      console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
+                    }
+                  }
+                }
+              }
             }
+          } else {
+            // Sprint-based import: Each sprint becomes a milestone
+            for (const sprint of sprints) {
+              // Fetch all issues in this sprint
+              const sprintIssues = await fetchSprintIssues(sprint.id, businessUserId);
+              
+              if (sprintIssues.length === 0) {
+                console.log(`No issues found in sprint ${sprint.name}`);
+                continue;
+              }
+              
+              // Calculate total estimated hours for the sprint
+              const totalHours = sprintIssues.reduce((sum, issue) => {
+                return sum + (issue.timeEstimate ? issue.timeEstimate / 3600 : 0);
+              }, 0);
+              
+              // Create description with all tasks listed
+              const tasksDescription = sprintIssues
+                .map(issue => `- [${issue.status}] ${issue.key}: ${issue.summary}`)
+                .join('\n');
+              
+              const sprintDescription = `${sprint.goal || 'Sprint tasks'}\n\n**Tasks (${sprintIssues.length}):**\n${tasksDescription}`;
+              
+              // Generate skill map from all sprint tasks combined
+              const combinedTaskSummary = sprintIssues.map(i => i.summary).join('; ');
+              let skillMap = null;
+              try {
+                skillMap = await generateSkillMap(sprint.name, combinedTaskSummary);
+              } catch (error) {
+                console.error(`Failed to generate skill map for sprint ${sprint.name}:`, error);
+              }
 
-            const milestone = await storage.createMilestone({
-              projectId: project.id,
-              name: issue.summary,
-              description: issue.description || "",
-              estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
-              skillMap: skillMap as any,
-            });
+              const milestone = await storage.createMilestone({
+                projectId: project.id,
+                name: sprint.name,
+                description: sprintDescription,
+                estimatedHours: totalHours || 80, // Default to 80 hours if no estimates
+                skillMap: skillMap as any,
+              });
 
-            // Auto-match candidates if skill map was generated
-            if (skillMap) {
-              const candidates = await storage.getAllCandidates();
-              for (const candidate of candidates) {
-                if (candidate.skills && candidate.skills.length > 0) {
-                  try {
-                    const fitAnalysis = await calculateFitScore(
-                      candidate.skills,
-                      candidate.experience || "",
-                      skillMap
-                    );
+              // Auto-match candidates if skill map was generated
+              if (skillMap) {
+                const candidates = await storage.getAllCandidates();
+                for (const candidate of candidates) {
+                  if (candidate.skills && candidate.skills.length > 0) {
+                    try {
+                      const fitAnalysis = await calculateFitScore(
+                        candidate.skills,
+                        candidate.experience || "",
+                        skillMap
+                      );
 
-                    await storage.createFitScore({
-                      candidateId: candidate.id,
-                      milestoneId: milestone.id,
-                      score: fitAnalysis.score,
-                      skillOverlap: fitAnalysis.skillOverlap,
-                      experienceMatch: fitAnalysis.experienceMatch,
-                      softSkillRelevance: fitAnalysis.softSkillRelevance,
-                      reasoning: fitAnalysis.reasoning,
-                    });
-                  } catch (error) {
-                    console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
+                      await storage.createFitScore({
+                        candidateId: candidate.id,
+                        milestoneId: milestone.id,
+                        score: fitAnalysis.score,
+                        skillOverlap: fitAnalysis.skillOverlap,
+                        experienceMatch: fitAnalysis.experienceMatch,
+                        softSkillRelevance: fitAnalysis.softSkillRelevance,
+                        reasoning: fitAnalysis.reasoning,
+                      });
+                    } catch (error) {
+                      console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
+                    }
                   }
                 }
               }

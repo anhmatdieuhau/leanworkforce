@@ -100,7 +100,9 @@ Preferred communication style: Simple, everyday language.
 
 **Jira Integration Features**:
 - **Project Import**: One-click import of all Jira projects from connected workspace (`fetchAllJiraProjects`)
-- **Issue Synchronization**: Automatic conversion of Jira issues to milestones with AI skill map generation (`syncJiraMilestones`)
+- **Sprint-Based Organization**: Automatically groups tasks by sprint - each sprint becomes a milestone (`fetchProjectSprints`)
+- **Task Synchronization**: All todo tasks within each sprint are imported and listed in the milestone description (`fetchSprintIssues`)
+- **Fallback Support**: For projects without sprints, falls back to issue-based import (`syncJiraMilestones`)
 - **Progress Monitoring**: Real-time delay detection using time tracking data (`getIssueProgress`)
 - **Risk Management**: Automated risk level calculation and backup candidate activation (`monitorProjectDelays`)
 
@@ -109,7 +111,15 @@ Preferred communication style: Simple, everyday language.
 **Import Workflow**: 
 1. User clicks "Import from Jira" button on Business Dashboard
 2. System fetches all accessible Jira projects via API
-3. For each project: creates database record, syncs issues as milestones, generates AI skill maps
+3. For each project:
+   - Detects sprints by querying issues with sprint information
+   - **Sprint-based mode** (if sprints found): Each sprint becomes a milestone containing all its tasks
+     - Fetches all issues within each sprint
+     - Combines sprint goal and task list in milestone description
+     - Calculates total estimated hours from all sprint tasks
+     - Generates AI skill map from combined task summaries
+   - **Issue-based mode** (fallback): Each issue becomes an individual milestone
+   - Creates database records for projects and milestones
 4. Auto-matches existing candidates to imported milestones using fit score calculation
 5. Dashboard refreshes with newly imported projects
 

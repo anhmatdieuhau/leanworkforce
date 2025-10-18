@@ -1,0 +1,114 @@
+import { getUncachableJiraClient } from "./jira-client";
+
+// Jira integration service for AI Workforce OS
+
+export interface JiraIssue {
+  key: string;
+  summary: string;
+  description?: string;
+  status: string;
+  timeEstimate?: number;
+  timeSpent?: number;
+}
+
+// Sync milestones from Jira project
+export async function syncJiraMilestones(projectKey: string): Promise<JiraIssue[]> {
+  try {
+    const client = await getUncachableJiraClient();
+    
+    const response = await client.search.searchForIssuesUsingJql({
+      jql: `project = ${projectKey}`,
+      fields: ["summary", "description", "status", "timeestimate", "timespent"],
+    });
+
+    const issues: JiraIssue[] = (response.issues || []).map((issue: any) => ({
+      key: issue.key,
+      summary: issue.fields.summary,
+      description: issue.fields.description,
+      status: issue.fields.status?.name || "Unknown",
+      timeEstimate: issue.fields.timeestimate,
+      timeSpent: issue.fields.timespent,
+    }));
+
+    return issues;
+  } catch (error) {
+    console.error("Error syncing Jira milestones:", error);
+    return [];
+  }
+}
+
+// Get issue status and calculate delay
+export async function getIssueProgress(issueKey: string): Promise<{
+  status: string;
+  delayPercentage: number;
+  timeEstimate: number;
+  timeSpent: number;
+}> {
+  try {
+    const client = await getUncachableJiraClient();
+    
+    const issue = await client.issues.getIssue({
+      issueIdOrKey: issueKey,
+      fields: ["status", "timeestimate", "timespent"],
+    });
+
+    const timeEstimate = issue.fields.timeestimate || 0;
+    const timeSpent = issue.fields.timespent || 0;
+    
+    let delayPercentage = 0;
+    if (timeEstimate > 0 && timeSpent > timeEstimate) {
+      delayPercentage = Math.round(((timeSpent - timeEstimate) / timeEstimate) * 100);
+    }
+
+    return {
+      status: issue.fields.status?.name || "Unknown",
+      delayPercentage,
+      timeEstimate,
+      timeSpent,
+    };
+  } catch (error) {
+    console.error("Error getting issue progress:", error);
+    return {
+      status: "Unknown",
+      delayPercentage: 0,
+      timeEstimate: 0,
+      timeSpent: 0,
+    };
+  }
+}
+
+// Monitor all issues in a project for delays
+export async function monitorProjectDelays(projectKey: string): Promise<Array<{
+  issueKey: string;
+  delayPercentage: number;
+  riskLevel: string;
+}>> {
+  try {
+    const issues = await syncJiraMilestones(projectKey);
+    const delayedIssues = [];
+
+    for (const issue of issues) {
+      const progress = await getIssueProgress(issue.key);
+      
+      if (progress.delayPercentage > 0) {
+        let riskLevel = "low";
+        if (progress.delayPercentage > 20) {
+          riskLevel = "high";
+        } else if (progress.delayPercentage >= 10) {
+          riskLevel = "medium";
+        }
+
+        delayedIssues.push({
+          issueKey: issue.key,
+          delayPercentage: progress.delayPercentage,
+          riskLevel,
+        });
+      }
+    }
+
+    return delayedIssues;
+  } catch (error) {
+    console.error("Error monitoring project delays:", error);
+    return [];
+  }
+}

@@ -75,36 +75,62 @@ export async function fetchSprintIssues(sprintId: number, businessUserId: string
   return [];
 }
 
-// Sync all issues from Jira project
+// Sync all issues from Jira project using pagination
 export async function syncJiraMilestones(projectKey: string, businessUserId: string = 'demo-business-user'): Promise<JiraIssue[]> {
   try {
     const client = await getUncachableJiraClient(businessUserId);
     
-    // Fetch all issues without field restrictions to avoid 410 errors
-    const response = await client.issueSearch.searchForIssuesUsingJql({
-      jql: `project = "${projectKey}" ORDER BY created DESC`,
-      maxResults: 1000,
-    });
+    const allIssues: JiraIssue[] = [];
+    let startAt = 0;
+    const maxResults = 50;
+    let total = 0;
 
-    console.log(`Fetched ${response.issues?.length || 0} issues for project ${projectKey}`);
+    // Use pagination to fetch all issues
+    do {
+      try {
+        // Simple JQL without quotes or complex syntax
+        const response = await client.issueSearch.searchForIssuesUsingJql({
+          jql: `project=${projectKey}`,
+          startAt,
+          maxResults,
+        });
 
-    // Filter out Epic issues after fetching
-    const issues: JiraIssue[] = (response.issues || [])
-      .filter((issue: any) => {
-        const issueType = issue.fields?.issuetype?.name || "";
-        return issueType.toLowerCase() !== "epic";
-      })
-      .map((issue: any) => ({
-        key: issue.key,
-        summary: issue.fields?.summary || "Untitled",
-        description: issue.fields?.description || "",
-        status: issue.fields?.status?.name || "To Do",
-        timeEstimate: issue.fields?.timeestimate,
-        timeSpent: issue.fields?.timespent,
-      }));
+        total = response.total || 0;
+        console.log(`Fetched ${response.issues?.length || 0} issues for project ${projectKey} (${startAt + 1}-${startAt + (response.issues?.length || 0)} of ${total})`);
 
-    console.log(`Filtered to ${issues.length} non-Epic issues`);
-    return issues;
+        if (response.issues && response.issues.length > 0) {
+          // Filter and map issues
+          const batchIssues = response.issues
+            .filter((issue: any) => {
+              const issueType = issue.fields?.issuetype?.name || "";
+              return issueType.toLowerCase() !== "epic";
+            })
+            .map((issue: any) => ({
+              key: issue.key,
+              summary: issue.fields?.summary || "Untitled",
+              description: issue.fields?.description || "",
+              status: issue.fields?.status?.name || "To Do",
+              timeEstimate: issue.fields?.timeestimate,
+              timeSpent: issue.fields?.timespent,
+            }));
+
+          allIssues.push(...batchIssues);
+        }
+
+        startAt += maxResults;
+
+        // Safety check to avoid infinite loops
+        if (startAt >= total || startAt >= 1000) {
+          break;
+        }
+      } catch (batchError) {
+        console.error(`Error fetching batch at ${startAt}:`, batchError);
+        break;
+      }
+    } while (startAt < total);
+
+    console.log(`Total fetched: ${allIssues.length} non-Epic issues from project ${projectKey}`);
+    return allIssues;
   } catch (error) {
     console.error("Error syncing Jira milestones:", error);
     return [];

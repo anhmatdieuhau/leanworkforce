@@ -74,28 +74,39 @@ export async function fetchSprintIssues(sprintId: number, businessUserId: string
   return [];
 }
 
-// Sync all issues from Jira project using pagination
+// Sync all issues from Jira project using NEW enhanced JQL search API
 export async function syncJiraMilestones(projectKey: string, businessUserId: string = 'demo-business-user'): Promise<JiraIssue[]> {
   try {
     const client = await getUncachableJiraClient(businessUserId);
     
     const allIssues: JiraIssue[] = [];
-    let startAt = 0;
-    const maxResults = 50;
-    let total = 0;
+    let nextPageToken: string | undefined = undefined;
+    const maxResults = 100; // New API allows up to 100 per page
+    let pageCount = 0;
+    const maxPages = 50; // Limit to 5000 issues max (50 pages × 100)
 
-    // Use pagination to fetch all issues
+    // Use cursor-based pagination with new enhanced JQL API
     do {
       try {
-        // Simple JQL without quotes or complex syntax
-        const response = await client.issueSearch.searchForIssuesUsingJql({
+        // Use the NEW enhanced JQL search endpoint (POST /rest/api/3/search/jql)
+        const searchBody: any = {
           jql: `project=${projectKey}`,
-          startAt,
+          fields: ['*navigable'], // Explicitly request fields (new API default changed)
           maxResults,
+        };
+        
+        if (nextPageToken) {
+          searchBody.nextPageToken = nextPageToken;
+        }
+
+        // Call the new endpoint directly using sendRequest
+        const response: any = await (client as any).sendRequest({
+          url: '/rest/api/3/search/jql',
+          method: 'POST',
+          data: searchBody,
         });
 
-        total = response.total || 0;
-        console.log(`Fetched ${response.issues?.length || 0} issues for project ${projectKey} (${startAt + 1}-${startAt + (response.issues?.length || 0)} of ${total})`);
+        console.log(`Fetched ${response.issues?.length || 0} issues for project ${projectKey} (page ${pageCount + 1})`);
 
         if (response.issues && response.issues.length > 0) {
           // Filter and map issues
@@ -147,19 +158,21 @@ export async function syncJiraMilestones(projectKey: string, businessUserId: str
           allIssues.push(...batchIssues);
         }
 
-        startAt += maxResults;
+        // Get next page token for cursor-based pagination
+        nextPageToken = response.nextPageToken;
+        pageCount++;
 
         // Safety check to avoid infinite loops
-        if (startAt >= total || startAt >= 1000) {
+        if (!nextPageToken || pageCount >= maxPages) {
           break;
         }
       } catch (batchError) {
-        console.error(`Error fetching batch at ${startAt}:`, batchError);
+        console.error(`Error fetching page ${pageCount + 1}:`, batchError);
         break;
       }
-    } while (startAt < total);
+    } while (nextPageToken);
 
-    console.log(`Total fetched: ${allIssues.length} non-Epic issues from project ${projectKey}`);
+    console.log(`Total fetched: ${allIssues.length} non-Epic issues from project ${projectKey} (${pageCount} pages)`);
     return allIssues;
   } catch (error) {
     console.error("Error syncing Jira milestones:", error);

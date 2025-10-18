@@ -1,0 +1,147 @@
+
+Community
+Forums
+Learning
+Events
+Champions
+Sign up
+Log in
+Forums
+Q&A 
+Discussion groups 
+Articles
+ Ask a question 
+Have more fun with Kudos
+Collect badges and make progress
+Participate in fun challenges
+Climb up the leaderboard
+Gift Kudos to your peers
+Log in to unlock your first badge
+Community
+Q&A
+Jira Service Management
+Questions
+JIRA API errors with Gone/410 : This API has been deprecated and is no longer available
+JIRA API errors with Gone/410 : This API has been deprecated and is no longer available
+Paul Lambert1
+Paul Lambert1
+January 8, 2025
+We have integration to JIRA to put a list of assets into JIRA. Then in JIRA service management, we use the JIRA asset panel with a https call into our web app to show details of each asset in the asset panel.
+
+However its stopped working with error message:
+
+(410) Gone. HTTP 410 This API has been deprecated and is no longer available.
+
+The API endpoint is:
+
+https ://your jira domain/rest/assetapi/asset/bulk
+
+The JIRA documentation here https://developer.atlassian.com/cloud/assetsapi/rest/api-group-assets/#api-group-assets does not indicate that these methods are deprecated.
+
+(I posted this on reddit also)
+
+What seems strange is that the asset list and the asset panel are still working, just that you can't now push more assets into JIRA because the /bulk endpoint no longer exists. I thought if they were taking away the ability to store assets, then all of it would be broken. This has affected several customers and our test instance. Our test instance is not premium, I don't know what our customers have.
+
+ 
+
+ 
+
+Answer
+ Watch
+  Like Deleted user likes this
+  Share
+6135 views
+1 answer  1 accepted
+1
+vote
+ Answer accepted
+Kai Krause
+Kai Krause
+Rising Star
+January 9, 2025
+Hi,
+
+when you look here About External Assets Platform the External Assets Platform is shutdown on 31.12.2024.
+
+ Support and Guziddance you finde here: 
+
+Shutdown Notice: Update on deprecation of the External Assets Platform - Announcements - The Atlassian Developer Community
+
+BR
+
+Kai 
+
+ 
+
+ 
+
+Paul Lambert1
+Paul Lambert1
+January 18, 2025
+Ah what a pain, in the midst of all the junk we get from atlassian we did not pick that up, and now we have customers in a mess. This does appear to be a terrible way to treat your customers, i.e. why not continue to allow it to work for a while, but I guess thats a market gorilla for you
+
+Like
+Dorothea Linneweber
+Dorothea Linneweber
+Atlassian Team
+January 22, 2025
+Hi @Paul Lambert1 , thank you for the valued feedback. We will ensure that in the future all subpages are updated, not just the parent page. 
+
+Please note that in addition to community articles, and in-UI messaging, we also sent emails to all admins of impacted sites notifying and reminding of the gradual shutdown that is occurring since 31.12.2024, so hopefully most customers are aware this is happening.
+
+Over the coming weeks the field will be removed altogether, however the intention was to start with the ability to add new/additional assets in order to allow for easier data recovery. We understand this could be misleading so have again noted this and will pass it on to the relevant teams.
+
+Like
+Reply
+Suggest an answer
+Log in or Sign up to answer
+People on a hot air balloon lifted by Community discussions
+Still have a question?
+
+Get fast answers from people who know.
+
+Sign up for free Log in
+Was this helpful?
+Yes No
+×
+Jira Service Management
+DEPLOYMENT TYPE
+CLOUD
+PERMISSIONS LEVEL
+Product Admin
+TAGS
+cloud jira-service-management jira-service-management-cloud
+Related Community content
+Re: Backup Manager API deprecation - is there goin...
+Re: Team Worklog Reports – Error with deprecated A...
+API has moved?
+You announced the deprecation of your backup API e...
+Jira API v3 Get Issues assigned to a version.
+atlassian, jira service management, deployment workflows, jsm webinar, streamline delivery, release automation, continuous deployment, devops tools, deployment pipeline, atlassian learning, service ops, developer productivity
+Streamline deployment workflows with Jira Service Management and Bitbucket
+Join us on 10/29 for a webinar on how Jira Service Management and Bitbucket help teams tackle deployment challenges, automate change management, and boost Dev + Ops collaboration with full visibility and faster, higher-quality releases.
+
+Register now 
+Upcoming Jira Service Management Events
+Atlassian Team Europe Post-Event Webinar: Unpacking the Future of Teamwork →
+Oct 20
+Canberra, ACT (AU)
+Neuigkeiten von der Team '25 Europe und Bye-bye Data Center →
+Oct 22
+Dresden, SN (DE)
+Atlassian Builders' Summit (In-Person) Conference - SOLD OUT →
+Oct 22
+Virtual (US)
+See all events
+Community
+Forums
+FAQs
+Forums guidelines
+Learning
+About learning
+Resources
+Events
+Champions
+Copyright © 2025 Atlassian
+Privacy Policy Terms Security
+Giải thích

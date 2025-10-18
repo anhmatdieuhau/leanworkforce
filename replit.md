@@ -103,11 +103,12 @@ Preferred communication style: Simple, everyday language.
 
 **Jira Integration Features**:
 - **Project Import**: One-click import of all Jira projects from connected workspace (`fetchAllJiraProjects`)
-- **Issue Synchronization**: All non-Epic issues imported as milestones with AI skill map generation (`syncJiraMilestones`)
+- **Issue Synchronization**: All non-Epic issues imported as milestones with AI skill map generation using enhanced JQL search API (`syncJiraMilestones`)
 - **Task Filtering**: Automatically excludes Epic-type issues, imports Stories, Tasks, and Bugs
+- **Epic & Sprint Tracking**: Captures epic keys and sprint IDs/names for task organization
 - **Progress Monitoring**: Real-time delay detection using time tracking data (`getIssueProgress`)
 - **Risk Management**: Automated risk level calculation and backup candidate activation (`monitorProjectDelays`)
-- **Note**: Sprint-based organization temporarily disabled due to Jira API v3 deprecation of sprint field
+- **API Migration**: Uses new enhanced JQL search endpoint (`/rest/api/3/search/jql`) with cursor-based pagination to comply with Atlassian's API deprecation (October 2024)
 
 **Client Management**: OAuth tokens require dynamic refresh on each client instantiation (clients never cached). Manual credentials fetched from database per businessUserId. Client automatically selects OAuth connector or manual credentials based on availability.
 

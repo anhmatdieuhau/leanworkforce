@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,16 @@ export function JiraSettingsDialog({ open, onOpenChange, businessUserId }: JiraS
     enabled: open,
   });
 
+  // Populate form fields when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      const settingsData = settings as any;
+      if (settingsData?.jiraDomain) setJiraDomain(settingsData.jiraDomain);
+      if (settingsData?.jiraEmail) setJiraEmail(settingsData.jiraEmail);
+      // Don't populate API token for security - user must re-enter
+    }
+  }, [settings]);
+
   // Test connection mutation
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
@@ -47,7 +57,7 @@ export function JiraSettingsDialog({ open, onOpenChange, businessUserId }: JiraS
         title: "Connection Successful",
         description: data.message,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/jira/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jira/settings", businessUserId] });
     },
     onError: (error: any) => {
       toast({
@@ -75,7 +85,7 @@ export function JiraSettingsDialog({ open, onOpenChange, businessUserId }: JiraS
         title: "Settings Saved",
         description: "Jira configuration has been saved successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/jira/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jira/settings", businessUserId] });
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -92,14 +102,27 @@ export function JiraSettingsDialog({ open, onOpenChange, businessUserId }: JiraS
   };
 
   const handleSave = () => {
-    if (!jiraDomain || !jiraEmail || !jiraApiToken) {
+    // Allow saving without API token if already configured (keep existing)
+    const isConfigured = (settings as any)?.isConfigured;
+    
+    if (!jiraDomain || !jiraEmail) {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please fill in all fields.",
+        description: "Please provide Jira domain and email.",
       });
       return;
     }
+    
+    if (!isConfigured && !jiraApiToken) {
+      toast({
+        variant: "destructive",
+        title: "Missing API Token",
+        description: "Please provide an API token for initial setup.",
+      });
+      return;
+    }
+    
     saveSettingsMutation.mutate();
   };
 
@@ -175,12 +198,13 @@ export function JiraSettingsDialog({ open, onOpenChange, businessUserId }: JiraS
                   id="jira-api-token"
                   data-testid="input-jira-token"
                   type="password"
-                  placeholder="••••••••••••••••"
+                  placeholder={(settings as any)?.isConfigured ? "••••••••••••••••" : "Enter API token"}
                   value={jiraApiToken}
                   onChange={(e) => setJiraApiToken(e.target.value)}
                   className="mt-1"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
+                  {(settings as any)?.isConfigured ? "Leave blank to keep existing token. " : ""}
                   Generate an API token from{" "}
                   <a
                     href="https://id.atlassian.com/manage-profile/security/api-tokens"

@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { sql } from "drizzle-orm";
 
 const app = express();
 app.use(express.json());
@@ -40,10 +41,20 @@ app.use((req, res, next) => {
   try {
     // Verify critical environment variables
     if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is required");
+      throw new Error("DATABASE_URL environment variable is required. Please set it in your deployment configuration.");
     }
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY environment variable is required");
+      throw new Error("GEMINI_API_KEY environment variable is required. Please set it in your deployment configuration.");
+    }
+
+    // Test database connection
+    log("Testing database connection...");
+    const { db } = await import("./db");
+    try {
+      await db.execute(sql`SELECT 1`);
+      log("Database connection successful");
+    } catch (dbError: any) {
+      throw new Error(`Database connection failed: ${dbError.message}. Please check your DATABASE_URL configuration.`);
     }
 
     const server = await registerRoutes(app);

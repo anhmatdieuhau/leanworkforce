@@ -5,7 +5,7 @@ import multer from "multer";
 import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { generateSkillMap, analyzeCVText, calculateFitScore, predictRisk } from "./gemini";
-import { syncJiraMilestones, getIssueProgress, monitorProjectDelays } from "./jira-service";
+import { syncJiraMilestones, getIssueProgress, monitorProjectDelays, fetchAllJiraProjects } from "./jira-service";
 import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema } from "@shared/schema";
 
 const upload = multer({ dest: "uploads/" });
@@ -109,6 +109,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(project);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Import projects from Jira
+  app.post("/api/jira/import-projects", async (req, res) => {
+    try {
+      const businessUserId = req.body.businessUserId || "default-user";
+
+      // Fetch all projects from Jira
+      const jiraProjects = await fetchAllJiraProjects();
+
+      const importedProjects = [];
+
+      for (const jiraProject of jiraProjects) {
+        // Check if project already exists
+        const existingProjects = await storage.getAllProjects();
+        const exists = existingProjects.find(p => p.jiraProjectKey === jiraProject.key);
+
+        if (exists) {
+          console.log(`Project ${jiraProject.key} already exists, skipping...`);
+          continue;
+        }
+
+        // Create project in database
+        const project = await storage.createProject({
+          name: jiraProject.name,
+          description: jiraProject.description || `Imported from Jira project ${jiraProject.key}`,
+          businessUserId,
+          jiraProjectKey: jiraProject.key,
+        });
+
+        // Fetch and create milestones from Jira issues
+        try {
+          const issues = await syncJiraMilestones(jiraProject.key);
+
+          for (const issue of issues) {
+            // Generate skill map using Gemini AI
+            let skillMap = null;
+            try {
+              skillMap = await generateSkillMap(issue.summary, issue.description || "");
+            } catch (error) {
+              console.error(`Failed to generate skill map for issue ${issue.key}:`, error);
+            }
+
+            const milestone = await storage.createMilestone({
+              projectId: project.id,
+              name: issue.summary,
+              description: issue.description || "",
+              estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
+              skillMap: skillMap as any,
+            });
+
+            // Auto-match candidates if skill map was generated
+            if (skillMap) {
+              const candidates = await storage.getAllCandidates();
+              for (const candidate of candidates) {
+                if (candidate.skills && candidate.skills.length > 0) {
+                  try {
+                    const fitAnalysis = await calculateFitScore(
+                      candidate.skills,
+                      candidate.experience || "",
+                      skillMap
+                    );
+
+                    await storage.createFitScore({
+                      candidateId: candidate.id,
+                      milestoneId: milestone.id,
+                      score: fitAnalysis.score,
+                      skillOverlap: fitAnalysis.skillOverlap,
+                      experienceMatch: fitAnalysis.experienceMatch,
+                      softSkillRelevance: fitAnalysis.softSkillRelevance,
+                      reasoning: fitAnalysis.reasoning,
+                    });
+                  } catch (error) {
+                    console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to sync milestones for project ${jiraProject.key}:`, error);
+        }
+
+        importedProjects.push(project);
+      }
+
+      res.json({
+        success: true,
+        imported: importedProjects.length,
+        projects: importedProjects,
+      });
+    } catch (error: any) {
+      console.error("Error importing Jira projects:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 

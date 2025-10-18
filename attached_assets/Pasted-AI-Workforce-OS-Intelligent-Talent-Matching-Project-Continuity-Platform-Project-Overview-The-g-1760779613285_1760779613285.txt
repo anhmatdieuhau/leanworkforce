@@ -1,0 +1,317 @@
+AI Workforce OS – Intelligent Talent Matching & Project Continuity Platform
+
+Project Overview
+
+The goal of this project is to develop an AI-powered workforce operating system that uses Google Gemini for intelligent skill extraction, candidate–project matching, and real-time risk prediction.
+The system connects businesses (who create projects with milestones) and candidates (who upload CVs and declare availability), powered by AI automation and seamless monitoring through Jira API.
+
+The backend will be built in Python (FastAPI) with a modular service-oriented structure, integrating Gemini for reasoning tasks, PostgreSQL for persistent storage, and a React-based frontend (or Next.js if extended).
+
+This system will act as a dynamic workforce cloud, capable of auto-filling talent gaps and optimizing human resource allocation in real time.
+
+Level: Medium to Advanced
+
+Type of Project
+
+AI Development · Workforce Automation · Backend Intelligence System
+
+Skills Required
+
+Python (FastAPI, Async I/O)
+
+PostgreSQL / SQLAlchemy ORM
+
+Google Gemini API (Skill extraction, CV matching, risk reasoning)
+
+REST API Design
+
+Frontend (React/Next.js, TypeScript, TailwindCSS)
+
+Jira API Integration
+
+Key Features
+Milestone 1: AI Skill Map Generation
+
+AI Agent (Gemini)
+
+Takes project description and milestone data from business users.
+
+Generates structured Skill Maps identifying hard/soft skills, technologies, and domain expertise.
+
+Output used to auto-fill project metadata and render dynamic skill visualizations.
+
+Example JSON Output:
+
+{
+  "milestone": "Data Analytics Dashboard",
+  "required_skills": ["Python", "Pandas", "Data Visualization", "SQL"],
+  "experience_level": "Intermediate",
+  "soft_skills": ["Analytical Thinking", "Communication"]
+}
+
+
+Python Module (ai_agent/skillmap.py):
+
+from google import genai
+
+def generate_skill_map(description: str) -> dict:
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    prompt = f"Extract structured skill requirements from this project description:\n{description}"
+    result = model.generate_content(prompt)
+    return parse_json(result.text)
+
+Milestone 2: Candidate Onboarding & Profile Analysis
+
+Flow:
+
+Candidate registers via email or phone (OTP).
+
+Uploads CV (PDF/DOC) or links LinkedIn/GitHub.
+
+Declares availability (1–2 months ahead).
+
+Gemini CV Analyzer:
+
+Parses and classifies experience, skills, education.
+
+Extracts soft skills and domain-specific indicators.
+
+Normalizes results for cross-comparison with project skill maps.
+
+Example Python Snippet:
+
+def analyze_cv(file_path: str) -> dict:
+    text = extract_text_from_pdf(file_path)
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    prompt = f"Extract candidate profile including skills, roles, and experience from:\n{text}"
+    result = model.generate_content(prompt)
+    return parse_json(result.text)
+
+Milestone 3: AI Candidate Fit Scoring
+
+Gemini Reasoning Model:
+
+Compares candidate profile vectors with milestone skill maps.
+
+Uses contextual reasoning (e.g., transferability between React and Vue).
+
+Computes a Fit Score (0–100).
+
+Fit Score Formula (simplified):
+
+FitScore = (SkillOverlap × 0.6) + (ExperienceMatch × 0.3) + (SoftSkillRelevance × 0.1)
+
+
+Example Python API Endpoint:
+
+@app.post("/ai/fit_score")
+async def compute_fit(candidate_id: int, milestone_id: int):
+    candidate = get_candidate_profile(candidate_id)
+    milestone = get_milestone(milestone_id)
+    score = gemini_reason_fit(candidate, milestone)
+    return {"fit_score": score}
+
+Milestone 4: Real-Time Project Monitoring & Backup Activation
+
+Jira Integration:
+
+Sync project milestones and issue statuses.
+
+Continuously monitor progress vs estimate.
+
+Trigger Gemini to analyze risk if delay detected (>20% of timeline).
+
+Backup Activation Logic:
+
+If risk probability exceeds threshold → activate top-ranked backup candidate from the same pool.
+
+Backup confirmation sent via candidate portal and email.
+
+Example:
+
+if delay_ratio > 0.2:
+    risk_report = gemini_risk_predict(project_data)
+    if risk_report["risk_level"] == "High":
+        activate_backup_talent(project_id)
+
+Milestone 5: Dual-Portals
+
+Business Portal:
+
+Create/manage projects & milestones
+
+View skill maps, candidate ranking, and risk dashboard
+
+Approve or contact candidates
+
+Candidate Portal:
+
+Manage profile, CVs, and calendar availability
+
+View recommended projects (>70% fit)
+
+Apply per milestone or project
+
+Design & UI Guidelines
+
+Primary: Deep Cerulean #007BA7
+
+Accent: Soft Lavender #D0A9F5
+
+Background: Light Bluish-Gray #E5E9EC
+
+Font: “Inter” sans-serif
+
+UI: Minimalist dashboards, clean cards, real-time feedback
+
+Animations: Subtle fade and slide transitions for state changes
+
+Example UI Components:
+
+SkillMapGraph (visual skill nodes)
+
+CandidateCard (fit score + summary)
+
+ProjectDashboard (milestone timeline + alerts)
+
+AvailabilityCalendar (availability selector)
+
+Backend Architecture
+/backend
+  /ai_agent
+    - skillmap.py
+    - cv_analysis.py
+    - fit_score.py
+    - risk_monitor.py
+  /api
+    - candidates.py
+    - projects.py
+    - monitoring.py
+  /db
+    - models.py (SQLAlchemy)
+    - schema.sql
+  /services
+    - jira_service.py
+    - otp_service.py
+    - mail_service.py
+
+
+Core Tech:
+
+Python 3.11
+
+FastAPI (async routes, Pydantic models)
+
+PostgreSQL + SQLAlchemy
+
+Gemini API via google-genai SDK
+
+JWT Auth + OTP-based login
+
+Client Information
+
+The client is a global workforce and AI operations firm, specializing in intelligent automation for remote staffing and project execution.
+They operate across North America, Europe, and Asia, focusing on enterprise-grade AI tools for real-time resource optimization, particularly in multi-project technical environments.
+The platform’s vision is to replace manual project staffing with a fully automated, risk-resilient AI workforce model — powered by Gemini’s reasoning and predictive capabilities.
+
+Nếu bạn muốn, tôi có thể viết tiếp phần prompt cho Gemini – bao gồm input–output mẫu và cấu trúc gọi API từ Python (để fine-tune hành vi sinh Skill Map, Fit Score và Risk Report).
+Bạn có muốn tôi mở rộng sang phần đó không?
+
+You said:
+app đơn giản sài các màu basic như trắng đen, ảnh ví dụ
+ChatGPT said:
+
+Rất chuẩn — hình bạn đưa lên minh họa kiểu “manufacturing flow” 3 cột, trắng đen, tối giản, bố cục thẳng hàng.
+Nếu bạn muốn AI Workforce OS có bản demo UI tương tự, dùng các màu cơ bản (đen, trắng, xám) — tôi có thể giúp bạn tạo layout khung app dạng quy trình (flow chart) theo style như hình.
+
+Cụ thể, ta sẽ thiết kế một app dạng flow view, mỗi cột là một “luồng” (workflow):
+
+Make to Stock → tương đương “Talent Pool Automation”
+
+Make to Order → tương đương “AI Matching”
+
+Engineer to Order → tương đương “Project Continuity AI”
+
+🔲 Định hướng giao diện
+
+Màu sắc:
+
+Nền trắng (#FFFFFF)
+
+Text đen (#000000)
+
+Icon và border xám (#E0E0E0 – #BDBDBD)
+
+Hover: nhẹ màu khói (#F5F5F5)
+
+Kiểu:
+
+Card bo góc nhẹ (8px)
+
+Shadow thấp (shadow-sm)
+
+Font: Inter, cỡ chữ trung bình, căn giữa dọc
+
+Không có gradient, không hiệu ứng màu — tập trung vào bố cục và hierarchy
+
+💡 Flow ví dụ (AI Workforce OS)
+Luồng	Mô tả	Các bước
+Talent Pool Automation	Tự động thu nhận hồ sơ và xác định kỹ năng cốt lõi.	Candidate Signup → CV Parsing (Gemini) → Skill Extraction → Pool Save
+AI Matching	Gán ứng viên phù hợp với từng milestone.	Project Creation → Skill Map AI → Fit Score Calculation → Ranking
+Continuity AI	Theo dõi rủi ro, kích hoạt backup talent.	Jira Sync → Delay Detection → Risk Assessment → Backup Activation
+🎨 Ví dụ mã React (Next.js + Tailwind) để render giao diện trắng đen như hình
+export default function WorkflowDiagram() {
+  const flows = [
+    {
+      title: "Talent Pool Automation",
+      steps: [
+        "Candidate Signup",
+        "CV Parsing (Gemini)",
+        "Skill Extraction",
+        "Pool Save",
+      ],
+    },
+    {
+      title: "AI Matching",
+      steps: [
+        "Project Creation",
+        "Skill Map AI",
+        "Fit Score Calculation",
+        "Ranking",
+      ],
+    },
+    {
+      title: "Continuity AI",
+      steps: [
+        "Jira Sync",
+        "Delay Detection",
+        "Risk Assessment",
+        "Backup Activation",
+      ],
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-white flex justify-center items-start p-10">
+      <div className="grid grid-cols-3 gap-8 w-full max-w-6xl">
+        {flows.map((flow) => (
+          <div key={flow.title} className="flex flex-col items-center">
+            <div className="bg-black text-white font-semibold rounded-md px-4 py-2 mb-4">
+              {flow.title}
+            </div>
+            {flow.steps.map((step, i) => (
+              <div key={i} className="flex flex-col items-center">
+                <div className="border border-gray-300 rounded-md px-4 py-3 w-48 text-center text-gray-800">
+                  {step}
+                </div>
+                {i < flow.steps.length - 1 && (
+                  <div className="h-6 w-px bg-gray-300 my-2" />
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

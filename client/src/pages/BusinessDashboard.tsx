@@ -2,12 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectCard } from "@/components/ProjectCard";
-import { Plus, FolderKanban, Users, TrendingUp, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Plus, FolderKanban, Users, TrendingUp, AlertTriangle, ArrowLeft, Download } from "lucide-react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function BusinessDashboard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
@@ -15,6 +18,31 @@ export default function BusinessDashboard() {
 
   const { data: stats = { totalProjects: 0, totalCandidates: 0, avgFitScore: 0, riskAlerts: 0 } } = useQuery({
     queryKey: ["/api/business/stats"],
+  });
+
+  const importFromJiraMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/jira/import-projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessUserId: "demo-business-user" }),
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business/stats"] });
+      toast({
+        title: "Import Successful",
+        description: `Imported ${data.imported} project(s) from Jira with AI-powered skill mapping.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import projects from Jira. Please check your Jira connection.",
+        variant: "destructive",
+      });
+    },
   });
 
   return (
@@ -33,13 +61,24 @@ export default function BusinessDashboard() {
               </Button>
               <h1 className="text-2xl font-bold" data-testid="business-dashboard-title">Business Portal</h1>
             </div>
-            <Button 
-              onClick={() => setLocation("/business/projects/new")}
-              data-testid="button-new-project"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => importFromJiraMutation.mutate()}
+                disabled={importFromJiraMutation.isPending}
+                data-testid="button-import-jira"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {importFromJiraMutation.isPending ? "Importing..." : "Import from Jira"}
+              </Button>
+              <Button 
+                onClick={() => setLocation("/business/projects/new")}
+                data-testid="button-new-project"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Button>
+            </div>
           </div>
         </div>
       </header>

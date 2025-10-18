@@ -86,13 +86,25 @@ Preferred communication style: Simple, everyday language.
 
 **Google Gemini AI**: Primary AI service for natural language processing tasks including skill extraction, semantic matching, and risk analysis. Configured via `@google/genai` SDK with API key authentication.
 
-**Jira Cloud API**: Integration via `jira.js` Version3Client for:
+**Jira Cloud API**: Integration via `jira.js` Version3Client with dual authentication approach:
+
+**Authentication Methods**:
+- **Primary**: Replit OAuth Connector - Seamless OAuth flow managed by Replit platform
+- **Fallback**: Manual Credentials - Business users can configure custom Jira domain, email, and API token via settings dialog
+
+**Jira Settings Management**:
+- Database table `jiraSettings` stores per-business-user configuration (domain, email, encrypted API token, connection type)
+- Settings dialog accessible via header button in Business Dashboard (`JiraSettingsDialog.tsx`)
+- API token preservation: Updates to domain/email don't require re-entering API token - existing token automatically preserved
+- businessUserId parameter threaded through all Jira service functions to fetch correct credentials per user
+
+**Jira Integration Features**:
 - **Project Import**: One-click import of all Jira projects from connected workspace (`fetchAllJiraProjects`)
 - **Issue Synchronization**: Automatic conversion of Jira issues to milestones with AI skill map generation (`syncJiraMilestones`)
 - **Progress Monitoring**: Real-time delay detection using time tracking data (`getIssueProgress`)
 - **Risk Management**: Automated risk level calculation and backup candidate activation (`monitorProjectDelays`)
 
-Jira authentication uses OAuth with Replit Connectors infrastructure, requiring dynamic token refresh on each client instantiation (clients are never cached due to token expiration).
+**Client Management**: OAuth tokens require dynamic refresh on each client instantiation (clients never cached). Manual credentials fetched from database per businessUserId. Client automatically selects OAuth connector or manual credentials based on availability.
 
 **Import Workflow**: 
 1. User clicks "Import from Jira" button on Business Dashboard

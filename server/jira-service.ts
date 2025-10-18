@@ -11,12 +11,48 @@ export interface JiraIssue {
   timeSpent?: number;
 }
 
+export interface JiraProject {
+  key: string;
+  name: string;
+  description?: string;
+  projectTypeKey: string;
+  lead?: {
+    displayName: string;
+    emailAddress: string;
+  };
+}
+
+// Fetch all Jira projects
+export async function fetchAllJiraProjects(): Promise<JiraProject[]> {
+  try {
+    const client = await getUncachableJiraClient();
+    
+    const response = await client.projects.searchProjects({});
+    
+    const projects: JiraProject[] = ((response as any).values || []).map((project: any) => ({
+      key: project.key,
+      name: project.name,
+      description: project.description || "",
+      projectTypeKey: project.projectTypeKey || "software",
+      lead: project.lead ? {
+        displayName: project.lead.displayName,
+        emailAddress: project.lead.emailAddress,
+      } : undefined,
+    }));
+
+    return projects;
+  } catch (error) {
+    console.error("Error fetching Jira projects:", error);
+    throw new Error("Failed to fetch projects from Jira. Please check your Jira credentials.");
+  }
+}
+
 // Sync milestones from Jira project
 export async function syncJiraMilestones(projectKey: string): Promise<JiraIssue[]> {
   try {
     const client = await getUncachableJiraClient();
     
-    const response = await client.search.searchForIssuesUsingJql({
+    const response = await client.issueSearch.searchForIssuesUsingJql({
       jql: `project = ${projectKey}`,
       fields: ["summary", "description", "status", "timeestimate", "timespent"],
     });

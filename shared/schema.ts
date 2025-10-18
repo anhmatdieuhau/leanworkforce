@@ -172,3 +172,26 @@ export const cvAnalysisSchema = z.object({
 });
 
 export type CVAnalysis = z.infer<typeof cvAnalysisSchema>;
+
+// ========== JIRA SETTINGS ==========
+export const jiraSettings = pgTable("jira_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessUserId: varchar("business_user_id").notNull().unique(),
+  jiraDomain: text("jira_domain"), // e.g., "company.atlassian.net"
+  jiraEmail: text("jira_email"),
+  jiraApiToken: text("jira_api_token"), // Encrypted API token
+  connectionType: text("connection_type").default("replit_connector"), // replit_connector or manual
+  isConfigured: boolean("is_configured").default(false),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertJiraSettingsSchema = createInsertSchema(jiraSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertJiraSettings = z.infer<typeof insertJiraSettingsSchema>;
+export type JiraSettings = typeof jiraSettings.$inferSelect;

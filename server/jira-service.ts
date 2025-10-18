@@ -81,19 +81,25 @@ export async function syncJiraMilestones(projectKey: string, businessUserId: str
     const client = await getUncachableJiraClient(businessUserId);
     
     const response = await client.issueSearch.searchForIssuesUsingJql({
-      jql: `project = ${projectKey} AND type != Epic ORDER BY created DESC`,
-      fields: ["summary", "description", "status", "timeestimate", "timespent"],
+      jql: `project = "${projectKey}" ORDER BY created DESC`,
+      fields: ["summary", "description", "status", "timeestimate", "timespent", "issuetype"],
       maxResults: 100,
     });
 
-    const issues: JiraIssue[] = (response.issues || []).map((issue: any) => ({
-      key: issue.key,
-      summary: issue.fields.summary,
-      description: issue.fields.description || "",
-      status: issue.fields.status?.name || "To Do",
-      timeEstimate: issue.fields.timeestimate,
-      timeSpent: issue.fields.timespent,
-    }));
+    // Filter out Epic issues after fetching
+    const issues: JiraIssue[] = (response.issues || [])
+      .filter((issue: any) => {
+        const issueType = issue.fields.issuetype?.name || "";
+        return issueType.toLowerCase() !== "epic";
+      })
+      .map((issue: any) => ({
+        key: issue.key,
+        summary: issue.fields.summary,
+        description: issue.fields.description || "",
+        status: issue.fields.status?.name || "To Do",
+        timeEstimate: issue.fields.timeestimate,
+        timeSpent: issue.fields.timespent,
+      }));
 
     return issues;
   } catch (error) {

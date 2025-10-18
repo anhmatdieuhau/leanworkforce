@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/projects/:id/candidates", async (req, res) => {
     try {
       const milestones = await storage.getMilestonesByProject(req.params.id);
-      const allCandidates = [];
+      const allCandidates: any[] = [];
 
       for (const milestone of milestones) {
         const topCandidates = await storage.getTopCandidatesForMilestone(milestone.id, 5);

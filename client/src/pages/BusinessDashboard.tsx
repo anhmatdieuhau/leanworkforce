@@ -12,23 +12,32 @@ export default function BusinessDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [] } = useQuery<any[]>({
     queryKey: ["/api/projects"],
   });
 
-  const { data: stats = { totalProjects: 0, totalCandidates: 0, avgFitScore: 0, riskAlerts: 0 } } = useQuery({
+  const { data: stats = { totalProjects: 0, totalCandidates: 0, avgFitScore: 0, riskAlerts: 0 } } = useQuery<{
+    totalProjects: number;
+    totalCandidates: number;
+    avgFitScore: number;
+    riskAlerts: number;
+  }>({
     queryKey: ["/api/business/stats"],
   });
 
   const importFromJiraMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/jira/import-projects", {
+      const response = await fetch("/api/jira/import-projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ businessUserId: "demo-business-user" }),
       });
+      if (!response.ok) {
+        throw new Error("Failed to import projects");
+      }
+      return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       queryClient.invalidateQueries({ queryKey: ["/api/business/stats"] });
       toast({

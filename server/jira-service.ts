@@ -80,27 +80,30 @@ export async function syncJiraMilestones(projectKey: string, businessUserId: str
   try {
     const client = await getUncachableJiraClient(businessUserId);
     
+    // Fetch all issues without field restrictions to avoid 410 errors
     const response = await client.issueSearch.searchForIssuesUsingJql({
       jql: `project = "${projectKey}" ORDER BY created DESC`,
-      fields: ["summary", "description", "status", "timeestimate", "timespent", "issuetype"],
-      maxResults: 100,
+      maxResults: 1000,
     });
+
+    console.log(`Fetched ${response.issues?.length || 0} issues for project ${projectKey}`);
 
     // Filter out Epic issues after fetching
     const issues: JiraIssue[] = (response.issues || [])
       .filter((issue: any) => {
-        const issueType = issue.fields.issuetype?.name || "";
+        const issueType = issue.fields?.issuetype?.name || "";
         return issueType.toLowerCase() !== "epic";
       })
       .map((issue: any) => ({
         key: issue.key,
-        summary: issue.fields.summary,
-        description: issue.fields.description || "",
-        status: issue.fields.status?.name || "To Do",
-        timeEstimate: issue.fields.timeestimate,
-        timeSpent: issue.fields.timespent,
+        summary: issue.fields?.summary || "Untitled",
+        description: issue.fields?.description || "",
+        status: issue.fields?.status?.name || "To Do",
+        timeEstimate: issue.fields?.timeestimate,
+        timeSpent: issue.fields?.timespent,
       }));
 
+    console.log(`Filtered to ${issues.length} non-Epic issues`);
     return issues;
   } catch (error) {
     console.error("Error syncing Jira milestones:", error);

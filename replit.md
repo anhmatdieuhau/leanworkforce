@@ -121,7 +121,7 @@ Preferred communication style: Simple, everyday language.
      - Converts time estimates from seconds to hours
      - Generates AI skill map from issue summary and description
      - Updates existing milestones (matched by name) or creates new ones
-   - Limits to 100 most recent issues per project
+   - Fetches up to 1000 most recent issues per project
 4. Auto-matches candidates to milestones using fit score calculation (updates existing or creates new)
 5. Dashboard refreshes with imported/updated projects
 

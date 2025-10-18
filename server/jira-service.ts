@@ -61,108 +61,38 @@ export async function fetchAllJiraProjects(businessUserId: string = 'demo-busine
   }
 }
 
-// Fetch all sprints for a project by querying issues and extracting unique sprints
+// Fetch all sprints for a project (sprint field deprecated - returns empty for now)
 export async function fetchProjectSprints(projectKey: string, businessUserId: string = 'demo-business-user'): Promise<JiraSprint[]> {
-  try {
-    const client = await getUncachableJiraClient(businessUserId);
-    
-    // Query all issues in the project that have sprint information
-    const response = await client.issueSearch.searchForIssuesUsingJql({
-      jql: `project = ${projectKey} AND sprint is not EMPTY ORDER BY created DESC`,
-      fields: ["sprint"],
-      maxResults: 1000,
-    });
-    
-    // Extract unique sprints from issues
-    const sprintMap = new Map<number, JiraSprint>();
-    
-    for (const issue of (response.issues || [])) {
-      const sprintData = (issue.fields as any).sprint;
-      if (sprintData) {
-        // Handle both single sprint and array of sprints
-        const sprints = Array.isArray(sprintData) ? sprintData : [sprintData];
-        
-        for (const sprint of sprints) {
-          if (sprint && sprint.id && !sprintMap.has(sprint.id)) {
-            sprintMap.set(sprint.id, {
-              id: sprint.id,
-              name: sprint.name || `Sprint ${sprint.id}`,
-              state: sprint.state || "active",
-              startDate: sprint.startDate,
-              endDate: sprint.endDate,
-              goal: sprint.goal,
-            });
-          }
-        }
-      }
-    }
-    
-    return Array.from(sprintMap.values()).sort((a, b) => {
-      // Sort by state (active first, then future, then closed) and then by name
-      const stateOrder = { active: 0, future: 1, closed: 2 };
-      const stateCompare = (stateOrder[a.state as keyof typeof stateOrder] || 3) - 
-                          (stateOrder[b.state as keyof typeof stateOrder] || 3);
-      return stateCompare !== 0 ? stateCompare : a.name.localeCompare(b.name);
-    });
-  } catch (error) {
-    console.error("Error fetching sprints:", error);
-    return [];
-  }
+  // NOTE: Sprint field has been deprecated in Jira API v3
+  // For now, return empty array and let system fallback to issue-based import
+  // Future enhancement: Use Jira Agile API board endpoints for sprint detection
+  console.log(`Sprint detection skipped for ${projectKey} - using issue-based import instead`);
+  return [];
 }
 
-// Fetch issues for a specific sprint
+// Fetch issues for a specific sprint (not used since sprint detection is disabled)
 export async function fetchSprintIssues(sprintId: number, businessUserId: string = 'demo-business-user'): Promise<JiraIssue[]> {
-  try {
-    const client = await getUncachableJiraClient(businessUserId);
-    
-    const response = await client.issueSearch.searchForIssuesUsingJql({
-      jql: `sprint = ${sprintId} AND type != Epic ORDER BY created DESC`,
-      fields: ["summary", "description", "status", "timeestimate", "timespent", "sprint"],
-    });
-
-    const issues: JiraIssue[] = (response.issues || []).map((issue: any) => ({
-      key: issue.key,
-      summary: issue.fields.summary,
-      description: issue.fields.description,
-      status: issue.fields.status?.name || "To Do",
-      timeEstimate: issue.fields.timeestimate,
-      timeSpent: issue.fields.timespent,
-      sprint: issue.fields.sprint ? {
-        id: issue.fields.sprint.id,
-        name: issue.fields.sprint.name,
-        state: issue.fields.sprint.state,
-      } : undefined,
-    }));
-
-    return issues;
-  } catch (error) {
-    console.error("Error fetching sprint issues:", error);
-    return [];
-  }
+  return [];
 }
 
-// Sync milestones from Jira project (legacy support - still works for non-sprint projects)
+// Sync all issues from Jira project
 export async function syncJiraMilestones(projectKey: string, businessUserId: string = 'demo-business-user'): Promise<JiraIssue[]> {
   try {
     const client = await getUncachableJiraClient(businessUserId);
     
     const response = await client.issueSearch.searchForIssuesUsingJql({
-      jql: `project = ${projectKey}`,
-      fields: ["summary", "description", "status", "timeestimate", "timespent", "sprint"],
+      jql: `project = ${projectKey} AND type != Epic ORDER BY created DESC`,
+      fields: ["summary", "description", "status", "timeestimate", "timespent"],
+      maxResults: 100,
     });
 
     const issues: JiraIssue[] = (response.issues || []).map((issue: any) => ({
       key: issue.key,
       summary: issue.fields.summary,
-      description: issue.fields.description,
-      status: issue.fields.status?.name || "Unknown",
+      description: issue.fields.description || "",
+      status: issue.fields.status?.name || "To Do",
       timeEstimate: issue.fields.timeestimate,
       timeSpent: issue.fields.timespent,
-      sprint: issue.fields.sprint ? {
-        id: issue.fields.sprint.id,
-        name: issue.fields.sprint.name,
-        state: issue.fields.sprint.state,
-      } : undefined,
     }));
 
     return issues;

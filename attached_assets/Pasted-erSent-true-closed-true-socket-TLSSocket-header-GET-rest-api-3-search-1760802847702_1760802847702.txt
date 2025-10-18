@@ -1,0 +1,55 @@
+erSent: true,
+      _closed: true,
+      socket: [TLSSocket],
+      _header: 'GET /rest/api/3/search?jql=project+%3D+WS&fields=summary,description,status,timeestimate,timespent,sprint HTTP/1.1\r\n' +
+        'Accept: application/json, text/plain, */*\r\n' +
+        'Authorization: Basic ZHRkdXk0NkBnbWFpbC5jb206QVRBVFQzeEZmR0YwalZ6UUV3dHFJZE50ZGQ2UktqMmRlYmNNcjNTSEduejA3VnpxRi1QTU5veFNRT2xyOTh3YzF1dTNWYXVmdWFlb29SN3YwQ1l2MjRFMVdzeWgybW9ha28zRnRJSmNFSXRIazBGZHd0MEktYVBFLTdhUmdNSFJpLXFUNVBVLXNZSEpZWDA4cVNoMkpfbnlLYjMzazJCOURxT3VIa3JRejN6MlE5ak13aVZvVkhzPUMwM0ZCM0E2\r\n' +
+        'User-Agent: axios/1.12.2\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: minhhuumadao.atlassian.net\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/rest/api/3/search?jql=project+%3D+WS&fields=summary,description,status,timeestimate,timespent,sprint',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: true,
+      host: 'minhhuumadao.atlassian.net',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      [Symbol(shapeMode)]: false,
+      [Symbol(kCapture)]: false,
+      [Symbol(kBytesWritten)]: 0,
+      [Symbol(kNeedDrain)]: false,
+      [Symbol(corked)]: 0,
+      [Symbol(kOutHeaders)]: [Object: null prototype],
+      [Symbol(errored)]: null,
+      [Symbol(kHighWaterMark)]: 16384,
+      [Symbol(kRejectNonStandardBodyWrites)]: false,
+      [Symbol(kUniqueHeaders)]: null
+    },
+    response: {
+      status: 410,
+      statusText: 'Gone',
+      headers: [Object [AxiosHeaders]],
+      config: [Object],
+      request: [ClientRequest],
+      data: [Object]
+    },
+    status: 410
+  },
+  code: 'ERR_BAD_REQUEST',
+  status: 410,
+  statusText: 'Gone'

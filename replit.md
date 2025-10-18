@@ -100,11 +100,11 @@ Preferred communication style: Simple, everyday language.
 
 **Jira Integration Features**:
 - **Project Import**: One-click import of all Jira projects from connected workspace (`fetchAllJiraProjects`)
-- **Sprint-Based Organization**: Automatically groups tasks by sprint - each sprint becomes a milestone (`fetchProjectSprints`)
-- **Task Synchronization**: All todo tasks within each sprint are imported and listed in the milestone description (`fetchSprintIssues`)
-- **Fallback Support**: For projects without sprints, falls back to issue-based import (`syncJiraMilestones`)
+- **Issue Synchronization**: All non-Epic issues imported as milestones with AI skill map generation (`syncJiraMilestones`)
+- **Task Filtering**: Automatically excludes Epic-type issues, imports Stories, Tasks, and Bugs
 - **Progress Monitoring**: Real-time delay detection using time tracking data (`getIssueProgress`)
 - **Risk Management**: Automated risk level calculation and backup candidate activation (`monitorProjectDelays`)
+- **Note**: Sprint-based organization temporarily disabled due to Jira API v3 deprecation of sprint field
 
 **Client Management**: OAuth tokens require dynamic refresh on each client instantiation (clients never cached). Manual credentials fetched from database per businessUserId. Client automatically selects OAuth connector or manual credentials based on availability.
 
@@ -112,16 +112,16 @@ Preferred communication style: Simple, everyday language.
 1. User clicks "Import from Jira" button on Business Dashboard
 2. System fetches all accessible Jira projects via API
 3. For each project:
-   - If project already exists in database: Re-syncs all tasks/milestones with latest Jira data
+   - If project already exists in database: Re-syncs all issues/milestones with latest Jira data
    - If project is new: Creates database record
-   - Detects sprints by querying issues with sprint information
-   - **Sprint-based mode** (if sprints found): Each sprint becomes a milestone containing all its tasks
-     - Fetches all issues within each sprint
-     - Combines sprint goal and task list in milestone description
-     - Calculates total estimated hours from all sprint tasks
-     - Generates AI skill map from combined task summaries
-     - Updates existing milestones or creates new ones
-   - **Issue-based mode** (fallback): Each issue becomes an individual milestone
+   - Fetches all non-Epic issues (Stories, Tasks, Bugs) from the project
+   - Each issue becomes a milestone:
+     - Uses issue summary as milestone name
+     - Preserves full issue description
+     - Converts time estimates from seconds to hours
+     - Generates AI skill map from issue summary and description
+     - Updates existing milestones (matched by name) or creates new ones
+   - Limits to 100 most recent issues per project
 4. Auto-matches candidates to milestones using fit score calculation (updates existing or creates new)
 5. Dashboard refreshes with imported/updated projects
 

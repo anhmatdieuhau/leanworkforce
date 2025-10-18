@@ -4,18 +4,29 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MilestoneTimeline } from "@/components/MilestoneTimeline";
 import { CandidateCard } from "@/components/CandidateCard";
-import { ArrowLeft, AlertTriangle, Users, Target, RefreshCw } from "lucide-react";
+import { GroupedTasksView } from "@/components/GroupedTasksView";
+import { ArrowLeft, AlertTriangle, Users, Target, RefreshCw, List } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project, Milestone, Candidate } from "@shared/schema";
+import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function ProjectDetail() {
   const [, setLocation] = useLocation();
   const params = useParams();
   const projectId = params.id;
   const { toast } = useToast();
+  const [groupBy, setGroupBy] = useState<"epic" | "sprint" | "none">("none");
+  const [viewMode, setViewMode] = useState<"timeline" | "grouped">("timeline");
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: ["/api/projects", projectId],
@@ -168,20 +179,56 @@ export default function ProjectDetail() {
           </TabsList>
 
           <TabsContent value="milestones" className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Project Milestones</h2>
-              <div className="text-sm text-muted-foreground">
-                {milestones.length} milestone{milestones.length !== 1 ? 's' : ''}
+            <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+              <h2 className="text-xl font-semibold">Project Tasks</h2>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={viewMode === "timeline" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("timeline")}
+                    data-testid="button-view-timeline"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    Timeline
+                  </Button>
+                  <Button
+                    variant={viewMode === "grouped" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("grouped")}
+                    data-testid="button-view-grouped"
+                  >
+                    <List className="w-4 h-4 mr-2" />
+                    Grouped
+                  </Button>
+                </div>
+                {viewMode === "grouped" && (
+                  <Select value={groupBy} onValueChange={(value: any) => setGroupBy(value)}>
+                    <SelectTrigger className="w-[150px]" data-testid="select-group-by">
+                      <SelectValue placeholder="Group by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Grouping</SelectItem>
+                      <SelectItem value="epic">By Epic</SelectItem>
+                      <SelectItem value="sprint">By Sprint</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="text-sm text-muted-foreground">
+                  {milestones.length} task{milestones.length !== 1 ? 's' : ''}
+                </div>
               </div>
             </div>
             {milestones.length === 0 ? (
               <Card className="py-12">
                 <CardContent className="text-center text-muted-foreground">
-                  No milestones defined yet
+                  No tasks defined yet
                 </CardContent>
               </Card>
-            ) : (
+            ) : viewMode === "timeline" ? (
               <MilestoneTimeline milestones={milestones} />
+            ) : (
+              <GroupedTasksView milestones={milestones} groupBy={groupBy} />
             )}
           </TabsContent>
 

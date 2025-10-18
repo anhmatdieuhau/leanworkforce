@@ -474,6 +474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: issue.description || "",
             estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
             skillMap: skillMap as any,
+            jiraIssueKey: issue.key,
+            jiraEpicKey: issue.epicKey || null,
+            jiraSprintId: issue.sprintId || null,
+            jiraSprintName: issue.sprintName || null,
           });
           milestone = updated || existingMilestone;
           updatedCount++;
@@ -485,6 +489,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: issue.description || "",
             estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
             skillMap: skillMap as any,
+            jiraIssueKey: issue.key,
+            jiraEpicKey: issue.epicKey || null,
+            jiraSprintId: issue.sprintId || null,
+            jiraSprintName: issue.sprintName || null,
           });
           createdCount++;
         }

@@ -28,7 +28,10 @@ Preferred communication style: Simple, everyday language.
 - Landing page with workflow visualization
 - Business dashboard with project management and Jira import
 - Candidate dashboard with profile management and job recommendations
-- Project detail view with milestone tracking and candidate matching
+- Project detail view with milestone tracking, candidate matching, and grouped task view
+  - Timeline view for milestone visualization
+  - Grouped view with epic/sprint organization
+  - Toggle between view modes and grouping options
 - Profile creation/editing with CV upload and AI parsing
 
 ### Backend Architecture
@@ -65,7 +68,7 @@ Preferred communication style: Simple, everyday language.
 
 **Schema Design**:
 - **projects**: Core project entities with business user ownership, Jira integration key, and status tracking
-- **milestones**: Project breakdown with skill maps (JSONB), assigned candidates, risk levels, and Jira issue keys
+- **milestones**: Project breakdown with skill maps (JSONB), assigned candidates, risk levels, Jira issue keys, epic keys, sprint IDs, and sprint names for organizational grouping
 - **candidates**: User profiles with skills arrays, availability windows, CV text storage, and AI-parsed metadata
 - **fitScores**: Calculated matching scores linking candidates to milestones with detailed breakdown (skillOverlap, experienceMatch, softSkillRelevance)
 - **riskAlerts**: Automated alerts for milestone delays with AI-generated recommendations and backup candidate suggestions

@@ -38,6 +38,9 @@ export const milestones = pgTable("milestones", {
   assignedCandidateId: varchar("assigned_candidate_id"),
   backupCandidateId: varchar("backup_candidate_id"),
   jiraIssueKey: text("jira_issue_key"),
+  jiraEpicKey: text("jira_epic_key"),
+  jiraSprintId: text("jira_sprint_id"),
+  jiraSprintName: text("jira_sprint_name"),
   delayPercentage: integer("delay_percentage").default(0),
   riskLevel: text("risk_level"), // low, medium, high
   skillMap: jsonb("skill_map"), // AI-generated skill requirements

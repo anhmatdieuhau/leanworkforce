@@ -9,11 +9,10 @@ export interface JiraIssue {
   status: string;
   timeEstimate?: number;
   timeSpent?: number;
-  sprint?: {
-    id: number;
-    name: string;
-    state: string;
-  };
+  epicKey?: string;
+  epicName?: string;
+  sprintId?: string;
+  sprintName?: string;
 }
 
 export interface JiraSprint {
@@ -105,14 +104,45 @@ export async function syncJiraMilestones(projectKey: string, businessUserId: str
               const issueType = issue.fields?.issuetype?.name || "";
               return issueType.toLowerCase() !== "epic";
             })
-            .map((issue: any) => ({
-              key: issue.key,
-              summary: issue.fields?.summary || "Untitled",
-              description: issue.fields?.description || "",
-              status: issue.fields?.status?.name || "To Do",
-              timeEstimate: issue.fields?.timeestimate,
-              timeSpent: issue.fields?.timespent,
-            }));
+            .map((issue: any) => {
+              // Extract epic information
+              const epicKey = issue.fields?.parent?.key || issue.fields?.epic?.key || null;
+              const epicName = issue.fields?.parent?.fields?.summary || issue.fields?.epic?.name || null;
+              
+              // Extract sprint information (from sprint field or customfield)
+              let sprintId = null;
+              let sprintName = null;
+              
+              // Try to get sprint from various possible fields
+              const sprintField = issue.fields?.sprint || 
+                                 issue.fields?.customfield_10020 || 
+                                 issue.fields?.customfield_10010;
+              
+              if (sprintField) {
+                if (Array.isArray(sprintField) && sprintField.length > 0) {
+                  // Take the latest sprint
+                  const latestSprint = sprintField[sprintField.length - 1];
+                  sprintId = latestSprint.id?.toString() || null;
+                  sprintName = latestSprint.name || null;
+                } else if (typeof sprintField === 'object' && sprintField.id) {
+                  sprintId = sprintField.id.toString();
+                  sprintName = sprintField.name || null;
+                }
+              }
+              
+              return {
+                key: issue.key,
+                summary: issue.fields?.summary || "Untitled",
+                description: issue.fields?.description || "",
+                status: issue.fields?.status?.name || "To Do",
+                timeEstimate: issue.fields?.timeestimate,
+                timeSpent: issue.fields?.timespent,
+                epicKey,
+                epicName,
+                sprintId,
+                sprintName,
+              };
+            });
 
           allIssues.push(...batchIssues);
         }

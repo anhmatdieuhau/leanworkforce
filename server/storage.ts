@@ -10,7 +10,7 @@ import {
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
 
-// Storage interface for AI Workforce OS
+// Storage interface for Lean Workforce
 export interface IStorage {
   // Projects
   getProject(id: string): Promise<Project | undefined>;

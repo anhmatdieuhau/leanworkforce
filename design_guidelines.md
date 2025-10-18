@@ -1,4 +1,4 @@
-# AI Workforce OS - Design Guidelines
+# Lean Workforce - Design Guidelines
 
 ## Design Approach
 

@@ -71,7 +71,7 @@ export default function LandingPage() {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-xl font-bold" data-testid="app-title">
-                AI Workforce OS
+                Lean Workforce
               </h1>
             </div>
             <div className="flex gap-3">
@@ -346,7 +346,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="font-semibold">AI Workforce OS</span>
+              <span className="font-semibold">Lean Workforce</span>
             </div>
             <div className="text-sm text-muted-foreground text-center md:text-left">
               Powered by Google Gemini AI & Jira Integration

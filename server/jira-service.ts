@@ -1,6 +1,6 @@
 import { getUncachableJiraClient } from "./jira-client";
 
-// Jira integration service for AI Workforce OS
+// Jira integration service for Lean Workforce
 
 export interface JiraIssue {
   key: string;

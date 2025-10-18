@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Gemini AI integration for AI Workforce OS
+// Gemini AI integration for Lean Workforce
 // Reference: javascript_gemini blueprint
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });

@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { generateSkillMap, analyzeCVText, calculateFitScore, predictRisk } from "./gemini";
 import { syncJiraMilestones, getIssueProgress, monitorProjectDelays, fetchAllJiraProjects } from "./jira-service";
-import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema } from "@shared/schema";
+import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema, insertJiraSettingsSchema } from "@shared/schema";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -109,6 +109,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(project);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get Jira settings for business user
+  app.get("/api/jira/settings/:businessUserId", async (req, res) => {
+    try {
+      const { businessUserId } = req.params;
+      const settings = await storage.getJiraSettings(businessUserId);
+      
+      if (!settings) {
+        return res.json({ 
+          isConfigured: false,
+          connectionType: "replit_connector"
+        });
+      }
+      
+      // Don't send API token in response
+      const { jiraApiToken, ...safeSettings } = settings;
+      res.json(safeSettings);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Save Jira settings
+  app.post("/api/jira/settings", async (req, res) => {
+    try {
+      const validated = insertJiraSettingsSchema.parse(req.body);
+      const settings = await storage.saveJiraSettings(validated);
+      
+      // Don't send API token in response
+      const { jiraApiToken, ...safeSettings } = settings;
+      res.json(safeSettings);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Test Jira connection
+  app.post("/api/jira/test-connection", async (req, res) => {
+    try {
+      const { businessUserId } = req.body;
+      
+      // Try to fetch projects to test connection
+      const jiraProjects = await fetchAllJiraProjects();
+      
+      // Update last synced time
+      await storage.updateJiraSettings(businessUserId, {
+        isConfigured: true,
+        lastSyncedAt: new Date()
+      });
+      
+      res.json({ 
+        success: true, 
+        projectCount: jiraProjects.length,
+        message: `Successfully connected! Found ${jiraProjects.length} Jira projects.`
+      });
+    } catch (error: any) {
+      res.status(400).json({ 
+        success: false,
+        error: error.message 
+      });
     }
   });
 

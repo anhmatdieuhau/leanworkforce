@@ -1,10 +1,11 @@
 import {
-  projects, milestones, candidates, fitScores, riskAlerts,
+  projects, milestones, candidates, fitScores, riskAlerts, jiraSettings,
   type Project, type InsertProject,
   type Milestone, type InsertMilestone,
   type Candidate, type InsertCandidate,
   type FitScore, type InsertFitScore,
-  type RiskAlert, type InsertRiskAlert
+  type RiskAlert, type InsertRiskAlert,
+  type JiraSettings, type InsertJiraSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -41,6 +42,11 @@ export interface IStorage {
   getRiskAlert(id: string): Promise<RiskAlert | undefined>;
   getRiskAlertsByMilestone(milestoneId: string): Promise<RiskAlert[]>;
   createRiskAlert(riskAlert: InsertRiskAlert): Promise<RiskAlert>;
+  
+  // Jira Settings
+  getJiraSettings(businessUserId: string): Promise<JiraSettings | undefined>;
+  saveJiraSettings(settings: InsertJiraSettings): Promise<JiraSettings>;
+  updateJiraSettings(businessUserId: string, data: Partial<InsertJiraSettings>): Promise<JiraSettings | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -160,6 +166,37 @@ export class DatabaseStorage implements IStorage {
   async createRiskAlert(insertRiskAlert: InsertRiskAlert): Promise<RiskAlert> {
     const [riskAlert] = await db.insert(riskAlerts).values(insertRiskAlert).returning();
     return riskAlert;
+  }
+
+  // Jira Settings
+  async getJiraSettings(businessUserId: string): Promise<JiraSettings | undefined> {
+    const [settings] = await db.select().from(jiraSettings).where(eq(jiraSettings.businessUserId, businessUserId));
+    return settings || undefined;
+  }
+
+  async saveJiraSettings(insertSettings: InsertJiraSettings): Promise<JiraSettings> {
+    const existing = await this.getJiraSettings(insertSettings.businessUserId);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(jiraSettings)
+        .set({ ...insertSettings, updatedAt: new Date() })
+        .where(eq(jiraSettings.businessUserId, insertSettings.businessUserId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(jiraSettings).values(insertSettings).returning();
+      return created;
+    }
+  }
+
+  async updateJiraSettings(businessUserId: string, data: Partial<InsertJiraSettings>): Promise<JiraSettings | undefined> {
+    const [settings] = await db
+      .update(jiraSettings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(jiraSettings.businessUserId, businessUserId))
+      .returning();
+    return settings || undefined;
   }
 }
 

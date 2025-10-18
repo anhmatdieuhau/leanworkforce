@@ -178,9 +178,15 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getJiraSettings(insertSettings.businessUserId);
     
     if (existing) {
+      // Preserve existing API token if new one is not provided
+      const updateData: any = { ...insertSettings, updatedAt: new Date() };
+      if (!insertSettings.jiraApiToken && existing.jiraApiToken) {
+        updateData.jiraApiToken = existing.jiraApiToken;
+      }
+      
       const [updated] = await db
         .update(jiraSettings)
-        .set({ ...insertSettings, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(jiraSettings.businessUserId, insertSettings.businessUserId))
         .returning();
       return updated;

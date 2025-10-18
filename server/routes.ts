@@ -100,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sync with Jira if project key is provided
       if (validated.jiraProjectKey) {
         try {
-          await syncJiraMilestones(validated.jiraProjectKey);
+          await syncJiraMilestones(validated.jiraProjectKey, validated.businessUserId);
         } catch (error) {
           console.error("Failed to sync with Jira:", error);
         }
@@ -153,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { businessUserId } = req.body;
       
       // Try to fetch projects to test connection
-      const jiraProjects = await fetchAllJiraProjects();
+      const jiraProjects = await fetchAllJiraProjects(businessUserId);
       
       // Update last synced time
       await storage.updateJiraSettings(businessUserId, {
@@ -177,10 +177,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import projects from Jira
   app.post("/api/jira/import-projects", async (req, res) => {
     try {
-      const businessUserId = req.body.businessUserId || "default-user";
+      const businessUserId = req.body.businessUserId || "demo-business-user";
 
       // Fetch all projects from Jira
-      const jiraProjects = await fetchAllJiraProjects();
+      const jiraProjects = await fetchAllJiraProjects(businessUserId);
 
       const importedProjects = [];
 
@@ -204,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Fetch and create milestones from Jira issues
         try {
-          const issues = await syncJiraMilestones(jiraProject.key);
+          const issues = await syncJiraMilestones(jiraProject.key, businessUserId);
 
           for (const issue of issues) {
             // Generate skill map using Gemini AI
@@ -641,7 +641,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sync Jira project
   app.post("/api/jira/sync/:projectKey", async (req, res) => {
     try {
-      const issues = await syncJiraMilestones(req.params.projectKey);
+      const businessUserId = req.body.businessUserId || "demo-business-user";
+      const issues = await syncJiraMilestones(req.params.projectKey, businessUserId);
       res.json({ issues, count: issues.length });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

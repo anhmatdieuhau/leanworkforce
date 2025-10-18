@@ -71,14 +71,20 @@ export function JiraSettingsDialog({ open, onOpenChange, businessUserId }: JiraS
   // Save settings mutation
   const saveSettingsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/jira/settings`, {
+      // Only include API token if provided (to preserve existing token)
+      const payload: any = {
         businessUserId,
         jiraDomain,
         jiraEmail,
-        jiraApiToken,
         connectionType: "manual",
         isConfigured: true,
-      });
+      };
+      
+      if (jiraApiToken) {
+        payload.jiraApiToken = jiraApiToken;
+      }
+      
+      return await apiRequest("POST", `/api/jira/settings`, payload);
     },
     onSuccess: () => {
       toast({

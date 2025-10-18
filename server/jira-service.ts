@@ -23,9 +23,9 @@ export interface JiraProject {
 }
 
 // Fetch all Jira projects
-export async function fetchAllJiraProjects(): Promise<JiraProject[]> {
+export async function fetchAllJiraProjects(businessUserId: string = 'demo-business-user'): Promise<JiraProject[]> {
   try {
-    const client = await getUncachableJiraClient();
+    const client = await getUncachableJiraClient(businessUserId);
     
     const response = await client.projects.searchProjects({});
     
@@ -48,9 +48,9 @@ export async function fetchAllJiraProjects(): Promise<JiraProject[]> {
 }
 
 // Sync milestones from Jira project
-export async function syncJiraMilestones(projectKey: string): Promise<JiraIssue[]> {
+export async function syncJiraMilestones(projectKey: string, businessUserId: string = 'demo-business-user'): Promise<JiraIssue[]> {
   try {
-    const client = await getUncachableJiraClient();
+    const client = await getUncachableJiraClient(businessUserId);
     
     const response = await client.issueSearch.searchForIssuesUsingJql({
       jql: `project = ${projectKey}`,
@@ -74,14 +74,14 @@ export async function syncJiraMilestones(projectKey: string): Promise<JiraIssue[
 }
 
 // Get issue status and calculate delay
-export async function getIssueProgress(issueKey: string): Promise<{
+export async function getIssueProgress(issueKey: string, businessUserId: string = 'demo-business-user'): Promise<{
   status: string;
   delayPercentage: number;
   timeEstimate: number;
   timeSpent: number;
 }> {
   try {
-    const client = await getUncachableJiraClient();
+    const client = await getUncachableJiraClient(businessUserId);
     
     const issue = await client.issues.getIssue({
       issueIdOrKey: issueKey,
@@ -114,17 +114,17 @@ export async function getIssueProgress(issueKey: string): Promise<{
 }
 
 // Monitor all issues in a project for delays
-export async function monitorProjectDelays(projectKey: string): Promise<Array<{
+export async function monitorProjectDelays(projectKey: string, businessUserId: string = 'demo-business-user'): Promise<Array<{
   issueKey: string;
   delayPercentage: number;
   riskLevel: string;
 }>> {
   try {
-    const issues = await syncJiraMilestones(projectKey);
+    const issues = await syncJiraMilestones(projectKey, businessUserId);
     const delayedIssues = [];
 
     for (const issue of issues) {
-      const progress = await getIssueProgress(issue.key);
+      const progress = await getIssueProgress(issue.key, businessUserId);
       
       if (progress.delayPercentage > 0) {
         let riskLevel = "low";

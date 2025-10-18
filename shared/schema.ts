@@ -191,6 +191,8 @@ export const insertJiraSettingsSchema = createInsertSchema(jiraSettings).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  jiraApiToken: z.string().optional(), // Make optional for updates - existing token will be preserved
 });
 
 export type InsertJiraSettings = z.infer<typeof insertJiraSettingsSchema>;

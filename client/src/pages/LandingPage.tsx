@@ -339,17 +339,131 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 bg-muted/20">
+      <footer className="border-t bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+          {/* Main Footer Content */}
+          <div className="py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+            {/* Brand Column */}
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-semibold">Lean Workforce</span>
               </div>
-              <span className="font-semibold">Lean Workforce</span>
+              <p className="text-sm text-muted-foreground mb-4">
+                Intelligent talent matching powered by AI for modern teams
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Powered by LeanfounderSpace
+              </p>
             </div>
-            <div className="text-sm text-muted-foreground text-center md:text-left">
-              Powered by LeanfounderSpace
+
+            {/* Platform Column */}
+            <div>
+              <h4 className="font-semibold mb-4">Platform</h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <button 
+                    onClick={() => setLocation("/business")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Business Portal
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => setLocation("/candidate")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Candidate Portal
+                  </button>
+                </li>
+                <li>
+                  <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+                    How It Works
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Company Column */}
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Contact
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Blog
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Resources Column */}
+            <div>
+              <h4 className="font-semibold mb-4">Resources</h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    API Reference
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Support
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Status
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="border-t py-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} Lean Workforce. All rights reserved.
+              </div>
+              <div className="flex gap-6 text-sm">
+                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Privacy Policy
+                </a>
+                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Terms of Service
+                </a>
+                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Cookie Policy
+                </a>
+              </div>
             </div>
           </div>
         </div>

@@ -4,29 +4,56 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MilestoneTimeline } from "@/components/MilestoneTimeline";
 import { CandidateCard } from "@/components/CandidateCard";
-import { ArrowLeft, AlertTriangle, Users, Target } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Users, Target, RefreshCw } from "lucide-react";
 import { useLocation, useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { Project, Milestone, Candidate } from "@shared/schema";
 
 export default function ProjectDetail() {
   const [, setLocation] = useLocation();
   const params = useParams();
   const projectId = params.id;
+  const { toast } = useToast();
 
-  const { data: project, isLoading: projectLoading } = useQuery({
+  const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: ["/api/projects", projectId],
   });
 
-  const { data: milestones = [] } = useQuery({
+  const { data: milestones = [] } = useQuery<Milestone[]>({
     queryKey: ["/api/projects", projectId, "milestones"],
   });
 
-  const { data: topCandidates = [] } = useQuery({
+  const { data: topCandidates = [] } = useQuery<Candidate[]>({
     queryKey: ["/api/projects", projectId, "candidates"],
   });
 
-  const { data: riskAlerts = [] } = useQuery({
+  const { data: riskAlerts = [] } = useQuery<any[]>({
     queryKey: ["/api/projects", projectId, "risks"],
+  });
+
+  const syncJiraMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/projects/${projectId}/sync-jira`, {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sync Complete",
+        description: data.message || `Successfully synced ${data.synced} tasks from Jira`,
+      });
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "milestones"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "risks"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync tasks from Jira",
+        variant: "destructive",
+      });
+    },
   });
 
   if (projectLoading) {
@@ -76,6 +103,17 @@ export default function ProjectDetail() {
               <h1 className="text-2xl font-bold" data-testid="project-name">{project.name}</h1>
               <p className="text-sm text-muted-foreground">{project.description}</p>
             </div>
+            {project.jiraProjectKey && (
+              <Button 
+                variant="outline"
+                onClick={() => syncJiraMutation.mutate()}
+                disabled={syncJiraMutation.isPending}
+                data-testid="button-sync-jira"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${syncJiraMutation.isPending ? 'animate-spin' : ''}`} />
+                {syncJiraMutation.isPending ? "Syncing..." : "Sync Tasks from Jira"}
+              </Button>
+            )}
             <Badge className={getStatusColor(project.status)} data-testid="project-status">
               {project.status}
             </Badge>

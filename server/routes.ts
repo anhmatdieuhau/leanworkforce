@@ -431,6 +431,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync Jira tasks for a specific project
+  app.post("/api/projects/:id/sync-jira", async (req, res) => {
+    try {
+      const projectId = req.params.id;
+      const project = await storage.getProject(projectId);
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (!project.jiraProjectKey) {
+        return res.status(400).json({ error: "Project is not linked to Jira" });
+      }
+
+      const businessUserId = project.businessUserId || "demo-business-user";
+
+      // Fetch issues from Jira
+      const issues = await syncJiraMilestones(project.jiraProjectKey, businessUserId);
+      
+      // Get existing milestones to check for duplicates
+      const existingMilestones = await storage.getMilestonesByProject(projectId);
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      for (const issue of issues) {
+        let skillMap = null;
+        try {
+          skillMap = await generateSkillMap(issue.summary, issue.description || "");
+        } catch (error) {
+          console.error(`Failed to generate skill map for issue ${issue.key}:`, error);
+        }
+
+        // Check if milestone already exists (by name)
+        const existingMilestone = existingMilestones.find(m => m.name === issue.summary);
+
+        let milestone: Milestone;
+        if (existingMilestone) {
+          // Update existing milestone
+          console.log(`Updating existing milestone: ${issue.summary}`);
+          const updated = await storage.updateMilestone(existingMilestone.id, {
+            description: issue.description || "",
+            estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
+            skillMap: skillMap as any,
+          });
+          milestone = updated || existingMilestone;
+          updatedCount++;
+        } else {
+          // Create new milestone
+          milestone = await storage.createMilestone({
+            projectId: project.id,
+            name: issue.summary,
+            description: issue.description || "",
+            estimatedHours: issue.timeEstimate ? issue.timeEstimate / 3600 : 40,
+            skillMap: skillMap as any,
+          });
+          createdCount++;
+        }
+
+        // Auto-match candidates if skill map was generated
+        if (skillMap) {
+          const candidates = await storage.getAllCandidates();
+          for (const candidate of candidates) {
+            if (candidate.skills && candidate.skills.length > 0) {
+              try {
+                const fitAnalysis = await calculateFitScore(
+                  candidate.skills,
+                  candidate.experience || "",
+                  skillMap
+                );
+
+                // Check if fit score already exists
+                const existingFitScores = await storage.getFitScoresByMilestone(milestone.id);
+                const existingScore = existingFitScores.find(fs => fs.candidateId === candidate.id);
+
+                if (existingScore) {
+                  // Update existing fit score
+                  await storage.updateFitScore(existingScore.id, {
+                    score: fitAnalysis.score,
+                    skillOverlap: fitAnalysis.skillOverlap,
+                    experienceMatch: fitAnalysis.experienceMatch,
+                    softSkillRelevance: fitAnalysis.softSkillRelevance,
+                    reasoning: fitAnalysis.reasoning,
+                  });
+                } else {
+                  // Create new fit score
+                  await storage.createFitScore({
+                    candidateId: candidate.id,
+                    milestoneId: milestone.id,
+                    score: fitAnalysis.score,
+                    skillOverlap: fitAnalysis.skillOverlap,
+                    experienceMatch: fitAnalysis.experienceMatch,
+                    softSkillRelevance: fitAnalysis.softSkillRelevance,
+                    reasoning: fitAnalysis.reasoning,
+                  });
+                }
+              } catch (error) {
+                console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
+              }
+            }
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        synced: issues.length,
+        created: createdCount,
+        updated: updatedCount,
+        message: `Synced ${issues.length} tasks from Jira (${createdCount} new, ${updatedCount} updated)`,
+      });
+    } catch (error: any) {
+      console.error("Error syncing Jira tasks:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ========== AI ENDPOINTS ==========
 
   // Generate skill map using Gemini AI

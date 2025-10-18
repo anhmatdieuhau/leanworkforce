@@ -2,15 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectCard } from "@/components/ProjectCard";
-import { Plus, FolderKanban, Users, TrendingUp, AlertTriangle, ArrowLeft, Download } from "lucide-react";
+import { Plus, FolderKanban, Users, TrendingUp, AlertTriangle, ArrowLeft, Download, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { JiraSettingsDialog } from "@/components/JiraSettingsDialog";
 
 export default function BusinessDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [jiraSettingsOpen, setJiraSettingsOpen] = useState(false);
 
   const { data: projects = [] } = useQuery<any[]>({
     queryKey: ["/api/projects"],
@@ -71,6 +73,14 @@ export default function BusinessDashboard() {
               <h1 className="text-2xl font-bold" data-testid="business-dashboard-title">Business Portal</h1>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                variant="outline"
+                size="icon"
+                onClick={() => setJiraSettingsOpen(true)}
+                data-testid="button-jira-settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
               <Button 
                 variant="outline"
                 onClick={() => importFromJiraMutation.mutate()}
@@ -174,6 +184,12 @@ export default function BusinessDashboard() {
           )}
         </div>
       </main>
+
+      <JiraSettingsDialog
+        open={jiraSettingsOpen}
+        onOpenChange={setJiraSettingsOpen}
+        businessUserId="demo-business-user"
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { Milestone } from "@shared/schema";
+import { parseADFToText } from "@/lib/adf-parser";
 
 interface GroupedTasksViewProps {
   milestones: Milestone[];
@@ -92,7 +93,7 @@ export function GroupedTasksView({ milestones, groupBy }: GroupedTasksViewProps)
                   <CardTitle className="text-base font-medium">{task.name}</CardTitle>
                   {task.description && (
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {task.description}
+                      {parseADFToText(task.description)}
                     </p>
                   )}
                 </div>
@@ -167,12 +168,14 @@ export function GroupedTasksView({ milestones, groupBy }: GroupedTasksViewProps)
                         <div className="font-medium text-sm">{task.name}</div>
                         {task.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {task.description}
+                            {parseADFToText(task.description)}
                           </p>
                         )}
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           {task.estimatedHours && (
-                            <span>{task.estimatedHours}h</span>
+                            <span data-testid={`task-hours-${task.id}`}>
+                              <strong>Original Estimate:</strong> {task.estimatedHours}h
+                            </span>
                           )}
                           {task.jiraIssueKey && (
                             <span className="font-mono">{task.jiraIssueKey}</span>

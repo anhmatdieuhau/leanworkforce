@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import type { Milestone } from "@shared/schema";
+import { parseADFToText } from "@/lib/adf-parser";
 
 interface MilestoneTimelineProps {
   milestones: Milestone[];
@@ -56,7 +57,7 @@ export function MilestoneTimeline({ milestones, onMilestoneClick }: MilestoneTim
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {milestone.description}
+                  {parseADFToText(milestone.description)}
                 </p>
               </div>
             </div>
@@ -65,7 +66,7 @@ export function MilestoneTimeline({ milestones, onMilestoneClick }: MilestoneTim
             <CardContent className="pt-0 pb-3">
               <div className="flex items-center gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Estimated: </span>
+                  <span className="text-muted-foreground">Original Estimate: </span>
                   <span className="font-medium">{milestone.estimatedHours}h</span>
                 </div>
                 {milestone.delayPercentage !== null && milestone.delayPercentage > 0 && (

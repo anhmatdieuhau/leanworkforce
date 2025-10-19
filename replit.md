@@ -33,7 +33,10 @@ Preferred communication style: Simple, everyday language.
   - Timeline view for milestone list visualization
   - Grouped view with epic/sprint organization (defaults to sprint grouping)
   - Toggle between view modes and grouping options
+  - **Task Display**: Each task shows description (ADF-parsed to readable text) and "Original Estimate" from Jira
 - Profile creation/editing with CV upload and AI parsing
+
+**Jira Description Parsing**: Frontend uses ADF (Atlassian Document Format) parser (`client/src/lib/adf-parser.ts`) to convert structured JSON descriptions from Jira into readable plain text with proper formatting (bullet points as •, paragraphs, etc.).
 
 ### Backend Architecture
 

@@ -25,8 +25,8 @@ export default function ProjectDetail() {
   const params = useParams();
   const projectId = params.id;
   const { toast } = useToast();
-  const [groupBy, setGroupBy] = useState<"epic" | "sprint" | "none">("none");
-  const [viewMode, setViewMode] = useState<"timeline" | "grouped">("timeline");
+  const [groupBy, setGroupBy] = useState<"epic" | "sprint" | "none">("sprint");
+  const [viewMode, setViewMode] = useState<"timeline" | "grouped">("grouped");
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: ["/api/projects", projectId],

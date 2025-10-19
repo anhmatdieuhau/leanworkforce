@@ -29,8 +29,9 @@ Preferred communication style: Simple, everyday language.
 - Business dashboard with project management and Jira import
 - Candidate dashboard with profile management and job recommendations
 - Project detail view with milestone tracking, candidate matching, and grouped task view
-  - Timeline view for milestone visualization
-  - Grouped view with epic/sprint organization
+  - **Default view**: Grouped by sprint (user preference)
+  - Timeline view for milestone list visualization
+  - Grouped view with epic/sprint organization (defaults to sprint grouping)
   - Toggle between view modes and grouping options
 - Profile creation/editing with CV upload and AI parsing
 

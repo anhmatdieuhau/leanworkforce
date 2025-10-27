@@ -1051,10 +1051,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Generate magic link URL
-      const baseUrl = process.env.REPL_SLUG 
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      // Use REPLIT_DOMAINS for production deployment URL
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
         : `http://localhost:5000`;
       const magicLinkUrl = generateMagicLinkUrl(token, baseUrl);
+      
+      console.log(`🔗 Magic link URL created: ${magicLinkUrl}`);
 
       // Send email (mock in development)
       await sendMagicLinkEmail(emailLower, magicLinkUrl);

@@ -153,6 +153,98 @@ export const insertRiskAlertSchema = createInsertSchema(riskAlerts).omit({
 export type InsertRiskAlert = z.infer<typeof insertRiskAlertSchema>;
 export type RiskAlert = typeof riskAlerts.$inferSelect;
 
+// ========== SAVED JOBS ==========
+export const savedJobs = pgTable("saved_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id, { onDelete: "cascade" }),
+  milestoneId: varchar("milestone_id").notNull().references(() => milestones.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const savedJobsRelations = relations(savedJobs, ({ one }) => ({
+  candidate: one(candidates, {
+    fields: [savedJobs.candidateId],
+    references: [candidates.id],
+  }),
+  milestone: one(milestones, {
+    fields: [savedJobs.milestoneId],
+    references: [milestones.id],
+  }),
+}));
+
+export const insertSavedJobSchema = createInsertSchema(savedJobs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSavedJob = z.infer<typeof insertSavedJobSchema>;
+export type SavedJob = typeof savedJobs.$inferSelect;
+
+// ========== APPLICATIONS ==========
+export const applications = pgTable("applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id, { onDelete: "cascade" }),
+  milestoneId: varchar("milestone_id").notNull().references(() => milestones.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("submitted"), // submitted, under_review, interview, accepted, rejected
+  coverLetter: text("cover_letter"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const applicationsRelations = relations(applications, ({ one }) => ({
+  candidate: one(candidates, {
+    fields: [applications.candidateId],
+    references: [candidates.id],
+  }),
+  milestone: one(milestones, {
+    fields: [applications.milestoneId],
+    references: [milestones.id],
+  }),
+  project: one(projects, {
+    fields: [applications.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const insertApplicationSchema = createInsertSchema(applications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertApplication = z.infer<typeof insertApplicationSchema>;
+export type Application = typeof applications.$inferSelect;
+
+// ========== CANDIDATE ACTIONS (Save/Skip) ==========
+export const candidateActions = pgTable("candidate_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id, { onDelete: "cascade" }),
+  milestoneId: varchar("milestone_id").notNull().references(() => milestones.id, { onDelete: "cascade" }),
+  action: text("action").notNull(), // save, skip, view
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const candidateActionsRelations = relations(candidateActions, ({ one }) => ({
+  candidate: one(candidates, {
+    fields: [candidateActions.candidateId],
+    references: [candidates.id],
+  }),
+  milestone: one(milestones, {
+    fields: [candidateActions.milestoneId],
+    references: [milestones.id],
+  }),
+}));
+
+export const insertCandidateActionSchema = createInsertSchema(candidateActions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCandidateAction = z.infer<typeof insertCandidateActionSchema>;
+export type CandidateAction = typeof candidateActions.$inferSelect;
+
 // ========== SKILL MAP TYPE ==========
 export const skillMapSchema = z.object({
   milestone: z.string(),

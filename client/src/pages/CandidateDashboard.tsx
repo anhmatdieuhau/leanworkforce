@@ -1,12 +1,19 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Upload, Calendar, Briefcase, TrendingUp } from "lucide-react";
+import { ArrowLeft, Upload, Calendar, Briefcase, TrendingUp, Bookmark, X, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { JobMatchExplainer } from "@/components/JobMatchExplainer";
 
 export default function CandidateDashboard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [expandedExplainer, setExpandedExplainer] = useState<string | null>(null);
 
   const { data: candidate } = useQuery({
     queryKey: ["/api/candidate/profile"],
@@ -18,6 +25,37 @@ export default function CandidateDashboard() {
 
   const { data: stats = { applications: 0, matches: 0, avgFitScore: 0 } } = useQuery({
     queryKey: ["/api/candidate/stats"],
+  });
+
+  const saveJobMutation = useMutation({
+    mutationFn: async (milestoneId: string) => {
+      return await apiRequest("POST", "/api/candidate/save-job", { milestoneId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/recommendations"] });
+      toast({ title: "Success", description: "Job saved for later!" });
+    },
+  });
+
+  const skipJobMutation = useMutation({
+    mutationFn: async (milestoneId: string) => {
+      return await apiRequest("POST", "/api/candidate/skip-job", { milestoneId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/recommendations"] });
+      toast({ title: "Job skipped", description: "We won't show this recommendation again." });
+    },
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: async ({ milestoneId, projectId }: { milestoneId: string; projectId: string }) => {
+      return await apiRequest("POST", "/api/candidate/apply", { milestoneId, projectId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate/stats"] });
+      toast({ title: "Application submitted!", description: "The business will review your application." });
+    },
   });
 
   return (
@@ -136,31 +174,102 @@ export default function CandidateDashboard() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendations.map((rec: any) => (
-                <Card key={rec.id} className="hover-elevate transition-all duration-150" data-testid={`recommendation-${rec.id}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-lg">{rec.projectName}</CardTitle>
-                      <Badge className="bg-[hsl(142,76%,36%)] text-white shrink-0">
-                        {rec.fitScore}% Fit
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {rec.milestoneName}: {rec.description}
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => setLocation(`/candidate/opportunities/${rec.id}`)}
-                      data-testid={`button-view-opportunity-${rec.id}`}
-                    >
-                      View Details
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {recommendations.map((rec: any) => {
+                const isExpanded = expandedExplainer === rec.id;
+                return (
+                  <Card key={rec.id} className="hover-elevate transition-all duration-150 flex flex-col" data-testid={`recommendation-${rec.id}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-lg">{rec.projectName}</CardTitle>
+                        <Badge className="bg-[hsl(142,76%,36%)] text-white shrink-0" data-testid={`badge-fit-score-${rec.id}`}>
+                          {rec.fitScore}% Fit
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 flex-1 flex flex-col">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium mb-1">{rec.milestoneName}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {rec.description}
+                        </p>
+                        
+                        {/* Why this job? toggle */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 h-auto p-0 text-xs hover:no-underline"
+                          onClick={() => setExpandedExplainer(isExpanded ? null : rec.id)}
+                          data-testid={`button-toggle-explainer-${rec.id}`}
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="w-3 h-3 mr-1" />
+                              Hide details
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-3 h-3 mr-1" />
+                              Why this job?
+                            </>
+                          )}
+                        </Button>
+
+                        {/* Explainer component */}
+                        {isExpanded && (
+                          <div className="mt-3">
+                            <JobMatchExplainer 
+                              fitScore={{
+                                score: rec.fitScore,
+                                skillOverlap: rec.skillOverlap || 0,
+                                experienceMatch: rec.experienceMatch || 0,
+                                softSkillRelevance: rec.softSkillRelevance || 0,
+                                reasoning: rec.reasoning
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => skipJobMutation.mutate(rec.id)}
+                          disabled={skipJobMutation.isPending}
+                          data-testid={`button-skip-${rec.id}`}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Skip
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => saveJobMutation.mutate(rec.id)}
+                          disabled={saveJobMutation.isPending}
+                          data-testid={`button-save-${rec.id}`}
+                        >
+                          <Bookmark className="w-4 h-4 mr-1" />
+                          Save
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => applyMutation.mutate({ milestoneId: rec.id, projectId: rec.projectId })}
+                          disabled={applyMutation.isPending}
+                          data-testid={`button-apply-${rec.id}`}
+                        >
+                          <Send className="w-4 h-4 mr-1" />
+                          Apply
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

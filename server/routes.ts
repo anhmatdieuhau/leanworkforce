@@ -784,21 +784,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fitScores = await storage.getFitScoresByCandidate(candidate.id);
       const recommendations = [];
 
+      // Get skipped jobs to filter them out
+      const actions = await storage.getActions(candidate.id);
+      const skippedMilestoneIds = actions
+        .filter(a => a.action === "skip")
+        .map(a => a.milestoneId);
+
       for (const score of fitScores) {
-        if (score.score >= 70) {
+        // Filter out skipped jobs and only show high fit scores
+        if (score.score >= 70 && !skippedMilestoneIds.includes(score.milestoneId)) {
           const milestone = await storage.getMilestone(score.milestoneId);
           if (milestone) {
             const project = await storage.getProject(milestone.projectId);
             recommendations.push({
-              id: score.id,
+              id: milestone.id,
+              projectId: project?.id,
               projectName: project?.name,
               milestoneName: milestone.name,
               description: milestone.description,
               fitScore: score.score,
+              skillOverlap: score.skillOverlap,
+              experienceMatch: score.experienceMatch,
+              softSkillRelevance: score.softSkillRelevance,
+              reasoning: score.reasoning,
             });
           }
         }
       }
+
+      // Sort by fit score descending
+      recommendations.sort((a, b) => b.fitScore - a.fitScore);
 
       res.json(recommendations);
     } catch (error: any) {
@@ -817,16 +832,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const fitScores = await storage.getFitScoresByCandidate(candidate.id);
+      const applications = await storage.getApplicationsByCandidate(candidate.id);
       const matches = fitScores.filter(s => s.score >= 70).length;
       const avgFitScore = fitScores.length > 0
         ? Math.round(fitScores.reduce((sum, s) => sum + s.score, 0) / fitScores.length)
         : 0;
 
       res.json({
-        applications: fitScores.length,
+        applications: applications.length,
         matches,
         avgFitScore,
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Save job for later
+  app.post("/api/candidate/save-job", async (req, res) => {
+    try {
+      const { milestoneId } = req.body;
+      const email = req.query.email as string || "demo@example.com";
+      const candidate = await storage.getCandidateByEmail(email);
+
+      if (!candidate) {
+        return res.status(404).json({ error: "Candidate profile not found" });
+      }
+
+      // Check if already saved
+      const isSaved = await storage.isJobSaved(candidate.id, milestoneId);
+      if (isSaved) {
+        return res.status(400).json({ error: "Job already saved" });
+      }
+
+      const savedJob = await storage.saveJob(candidate.id, milestoneId);
+      await storage.recordAction(candidate.id, milestoneId, "save");
+
+      res.json(savedJob);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Skip job
+  app.post("/api/candidate/skip-job", async (req, res) => {
+    try {
+      const { milestoneId } = req.body;
+      const email = req.query.email as string || "demo@example.com";
+      const candidate = await storage.getCandidateByEmail(email);
+
+      if (!candidate) {
+        return res.status(404).json({ error: "Candidate profile not found" });
+      }
+
+      await storage.recordAction(candidate.id, milestoneId, "skip");
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Apply to job
+  app.post("/api/candidate/apply", async (req, res) => {
+    try {
+      const { milestoneId, projectId } = req.body;
+      const email = req.query.email as string || "demo@example.com";
+      const candidate = await storage.getCandidateByEmail(email);
+
+      if (!candidate) {
+        return res.status(404).json({ error: "Candidate profile not found" });
+      }
+
+      // Create application
+      const application = await storage.createApplication({
+        candidateId: candidate.id,
+        milestoneId,
+        projectId,
+        status: "pending",
+      });
+
+      // Record action
+      await storage.recordAction(candidate.id, milestoneId, "apply");
+
+      res.json(application);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

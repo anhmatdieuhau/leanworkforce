@@ -1,11 +1,15 @@
 import {
   projects, milestones, candidates, fitScores, riskAlerts, jiraSettings,
+  savedJobs, applications, candidateActions,
   type Project, type InsertProject,
   type Milestone, type InsertMilestone,
   type Candidate, type InsertCandidate,
   type FitScore, type InsertFitScore,
   type RiskAlert, type InsertRiskAlert,
-  type JiraSettings, type InsertJiraSettings
+  type JiraSettings, type InsertJiraSettings,
+  type SavedJob, type InsertSavedJob,
+  type Application, type InsertApplication,
+  type CandidateAction, type InsertCandidateAction
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -48,6 +52,24 @@ export interface IStorage {
   getJiraSettings(businessUserId: string): Promise<JiraSettings | undefined>;
   saveJiraSettings(settings: InsertJiraSettings): Promise<JiraSettings>;
   updateJiraSettings(businessUserId: string, data: Partial<InsertJiraSettings>): Promise<JiraSettings | undefined>;
+  
+  // Saved Jobs
+  saveJob(candidateId: string, milestoneId: string): Promise<SavedJob>;
+  unsaveJob(candidateId: string, milestoneId: string): Promise<void>;
+  getSavedJobs(candidateId: string): Promise<SavedJob[]>;
+  isJobSaved(candidateId: string, milestoneId: string): Promise<boolean>;
+  
+  // Applications
+  createApplication(application: InsertApplication): Promise<Application>;
+  getApplication(id: string): Promise<Application | undefined>;
+  getApplicationsByCandidate(candidateId: string): Promise<Application[]>;
+  getApplicationsByMilestone(milestoneId: string): Promise<Application[]>;
+  updateApplicationStatus(id: string, status: string): Promise<Application | undefined>;
+  
+  // Candidate Actions (Save/Skip/View tracking)
+  recordAction(candidateId: string, milestoneId: string, action: string): Promise<CandidateAction>;
+  getActions(candidateId: string): Promise<CandidateAction[]>;
+  hasAction(candidateId: string, milestoneId: string, action: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -209,6 +231,84 @@ export class DatabaseStorage implements IStorage {
       .where(eq(jiraSettings.businessUserId, businessUserId))
       .returning();
     return settings || undefined;
+  }
+
+  // Saved Jobs
+  async saveJob(candidateId: string, milestoneId: string): Promise<SavedJob> {
+    const [savedJob] = await db.insert(savedJobs).values({ candidateId, milestoneId }).returning();
+    return savedJob;
+  }
+
+  async unsaveJob(candidateId: string, milestoneId: string): Promise<void> {
+    await db.delete(savedJobs).where(
+      and(
+        eq(savedJobs.candidateId, candidateId),
+        eq(savedJobs.milestoneId, milestoneId)
+      )
+    );
+  }
+
+  async getSavedJobs(candidateId: string): Promise<SavedJob[]> {
+    return await db.select().from(savedJobs).where(eq(savedJobs.candidateId, candidateId)).orderBy(desc(savedJobs.createdAt));
+  }
+
+  async isJobSaved(candidateId: string, milestoneId: string): Promise<boolean> {
+    const [saved] = await db.select().from(savedJobs).where(
+      and(
+        eq(savedJobs.candidateId, candidateId),
+        eq(savedJobs.milestoneId, milestoneId)
+      )
+    );
+    return !!saved;
+  }
+
+  // Applications
+  async createApplication(insertApplication: InsertApplication): Promise<Application> {
+    const [application] = await db.insert(applications).values(insertApplication).returning();
+    return application;
+  }
+
+  async getApplication(id: string): Promise<Application | undefined> {
+    const [application] = await db.select().from(applications).where(eq(applications.id, id));
+    return application || undefined;
+  }
+
+  async getApplicationsByCandidate(candidateId: string): Promise<Application[]> {
+    return await db.select().from(applications).where(eq(applications.candidateId, candidateId)).orderBy(desc(applications.createdAt));
+  }
+
+  async getApplicationsByMilestone(milestoneId: string): Promise<Application[]> {
+    return await db.select().from(applications).where(eq(applications.milestoneId, milestoneId)).orderBy(desc(applications.createdAt));
+  }
+
+  async updateApplicationStatus(id: string, status: string): Promise<Application | undefined> {
+    const [application] = await db
+      .update(applications)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(applications.id, id))
+      .returning();
+    return application || undefined;
+  }
+
+  // Candidate Actions
+  async recordAction(candidateId: string, milestoneId: string, action: string): Promise<CandidateAction> {
+    const [candidateAction] = await db.insert(candidateActions).values({ candidateId, milestoneId, action }).returning();
+    return candidateAction;
+  }
+
+  async getActions(candidateId: string): Promise<CandidateAction[]> {
+    return await db.select().from(candidateActions).where(eq(candidateActions.candidateId, candidateId)).orderBy(desc(candidateActions.createdAt));
+  }
+
+  async hasAction(candidateId: string, milestoneId: string, action: string): Promise<boolean> {
+    const [candidateAction] = await db.select().from(candidateActions).where(
+      and(
+        eq(candidateActions.candidateId, candidateId),
+        eq(candidateActions.milestoneId, milestoneId),
+        eq(candidateActions.action, action)
+      )
+    );
+    return !!candidateAction;
   }
 }
 

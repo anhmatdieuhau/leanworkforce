@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Sparkles, CheckCircle2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Upload, Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -31,23 +32,40 @@ export default function CandidateProfile() {
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [parseStage, setParseStage] = useState<'idle' | 'uploading' | 'parsing' | 'analyzing' | 'complete'>('idle');
 
-  const { data: candidate } = useQuery({
+  const { data: candidate, isLoading: isCandidateLoading } = useQuery({
     queryKey: ["/api/candidate/profile"],
   });
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: candidate?.name || "",
-      email: candidate?.email || "",
-      phone: candidate?.phone || "",
-      linkedinUrl: candidate?.linkedinUrl || "",
-      githubUrl: candidate?.githubUrl || "",
-      availableFrom: candidate?.availableFrom ? new Date(candidate.availableFrom).toISOString().split('T')[0] : "",
-      availableUntil: candidate?.availableUntil ? new Date(candidate.availableUntil).toISOString().split('T')[0] : "",
+      name: "",
+      email: "",
+      phone: "",
+      linkedinUrl: "",
+      githubUrl: "",
+      availableFrom: "",
+      availableUntil: "",
     },
   });
+
+  // Reset form when candidate data loads (handle both null and populated responses)
+  useEffect(() => {
+    if (candidate !== undefined) {
+      form.reset({
+        name: candidate?.name || "",
+        email: candidate?.email || "",
+        phone: candidate?.phone || "",
+        linkedinUrl: candidate?.linkedinUrl || "",
+        githubUrl: candidate?.githubUrl || "",
+        availableFrom: candidate?.availableFrom ? new Date(candidate.availableFrom).toISOString().split('T')[0] : "",
+        availableUntil: candidate?.availableUntil ? new Date(candidate.availableUntil).toISOString().split('T')[0] : "",
+      });
+    }
+  }, [candidate, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
@@ -116,13 +134,84 @@ export default function CandidateProfile() {
   const handleUploadCV = () => {
     if (selectedFile) {
       setIsAnalyzing(true);
+      setUploadProgress(0);
+      setParseStage('uploading');
+      
+      // Simulate upload progress
+      const uploadInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 30) {
+            clearInterval(uploadInterval);
+            return 30;
+          }
+          return prev + 10;
+        });
+      }, 200);
+      
       uploadCVMutation.mutate(selectedFile);
     }
   };
+  
+  // Update progress as stages complete
+  useEffect(() => {
+    if (uploadCVMutation.isPending && parseStage === 'uploading') {
+      const timer = setTimeout(() => {
+        setUploadProgress(40);
+        setParseStage('parsing');
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+    if (uploadCVMutation.isPending && parseStage === 'parsing') {
+      const timer = setTimeout(() => {
+        setUploadProgress(70);
+        setParseStage('analyzing');
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+    if (uploadCVMutation.isSuccess && parseStage !== 'complete') {
+      setUploadProgress(100);
+      setParseStage('complete');
+      setTimeout(() => {
+        setParseStage('idle');
+        setUploadProgress(0);
+      }, 2000);
+    }
+  }, [uploadCVMutation.isPending, uploadCVMutation.isSuccess, parseStage]);
 
   const onSubmit = (data: ProfileFormValues) => {
     updateProfileMutation.mutate(data);
   };
+
+  // Show loading state while candidate data is being fetched
+  if (isCandidateLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-white sticky top-0 z-50">
+          <div className="max-w-5xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setLocation("/candidate")}
+                data-testid="button-back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="text-2xl font-bold" data-testid="page-title">Manage Profile</h1>
+            </div>
+          </div>
+        </header>
+        <main className="max-w-5xl mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="p-8 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <span className="ml-3 text-muted-foreground">Loading profile...</span>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -161,31 +250,49 @@ export default function CandidateProfile() {
               </div>
             ) : (
               <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
-                <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <div className="mb-4">
-                  <p className="font-medium mb-1">Drag & drop or click to upload</p>
-                  <p className="text-sm text-muted-foreground">PDF or DOC files only</p>
-                </div>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="cv-upload"
-                  data-testid="input-cv-upload"
-                />
-                <label htmlFor="cv-upload">
-                  <Button type="button" variant="outline" asChild>
-                    <span>Select File</span>
-                  </Button>
-                </label>
-                {selectedFile && (
-                  <div className="mt-4">
-                    <p className="text-sm mb-3">Selected: {selectedFile.name}</p>
-                    <Button onClick={handleUploadCV} disabled={isAnalyzing} data-testid="button-upload-cv">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {isAnalyzing ? "Analyzing with AI..." : "Upload & Analyze"}
-                    </Button>
+                {!isAnalyzing ? (
+                  <>
+                    <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <div className="mb-4">
+                      <p className="font-medium mb-1">Drag & drop or click to upload</p>
+                      <p className="text-sm text-muted-foreground">PDF or DOC files only (max 10MB)</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="cv-upload"
+                      data-testid="input-cv-upload"
+                    />
+                    <label htmlFor="cv-upload">
+                      <Button type="button" variant="outline" asChild>
+                        <span>Select File</span>
+                      </Button>
+                    </label>
+                    {selectedFile && (
+                      <div className="mt-4">
+                        <p className="text-sm mb-3">Selected: {selectedFile.name}</p>
+                        <Button onClick={handleUploadCV} disabled={isAnalyzing} data-testid="button-upload-cv">
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Upload & Analyze
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <Loader2 className="w-12 h-12 mx-auto text-primary animate-spin" />
+                    <div>
+                      <p className="font-medium mb-2">
+                        {parseStage === 'uploading' && '📤 Uploading your CV...'}
+                        {parseStage === 'parsing' && '📄 Extracting text...'}
+                        {parseStage === 'analyzing' && '🤖 AI analyzing your profile...'}
+                        {parseStage === 'complete' && '✅ Complete!'}
+                      </p>
+                      <Progress value={uploadProgress} className="w-full max-w-md mx-auto" data-testid="upload-progress" />
+                      <p className="text-sm text-muted-foreground mt-2">{uploadProgress}% complete</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -233,8 +340,11 @@ export default function CandidateProfile() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="john@example.com" {...field} data-testid="input-email" />
+                        <Input type="email" placeholder="john@example.com" {...field} disabled data-testid="input-email" />
                       </FormControl>
+                      <FormDescription>
+                        Email cannot be changed as it's used as your account identifier
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

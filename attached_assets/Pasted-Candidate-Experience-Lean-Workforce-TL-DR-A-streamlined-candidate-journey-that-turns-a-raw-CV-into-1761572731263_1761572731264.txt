@@ -1,0 +1,363 @@
+Candidate Experience – Lean Workforce
+TL;DR
+A streamlined candidate journey that turns a raw CV into a rich profile, matches candidates to the best-fit roles using AI, and enables quick applications with transparency and privacy by design. It reduces friction for job seekers and speeds up quality matches for lean hiring teams. Ideal for early-career to senior candidates seeking fast, relevant opportunities without reinventing their resume.
+
+Goals
+Business Goals
+Increase candidate-to-complete-profile conversion rate to 60%+ within 30 days of launch.
+
+Improve first-week job application rate per new candidate to 1.5+ applications on average.
+
+Achieve 30% reduction in time-to-first-quality-application (from signup) compared to baseline.
+
+Drive 25% of applications through AI recommendations with ≥0.6 precision@5 on match relevance.
+
+Maintain candidate NPS ≥ 50 and CSAT ≥ 4.5/5 for onboarding experience.
+
+User Goals
+Create a complete, accurate profile in under 5 minutes from a CV upload.
+
+Receive personalized, explainable job matches that reflect skills, preferences, and career goals.
+
+Apply to roles quickly with one-click, CV-tailored submissions.
+
+Maintain control over data sharing, visibility, and deletion.
+
+Easily update profile and get refreshed matches in real time.
+
+Non-Goals
+Building recruiter-side ATS or full employer workflows (beyond basic job ingestion and match surfacing).
+
+Complex networking/community features (forums, messaging between candidates).
+
+Salary negotiation or offer-management tooling.
+
+User Stories
+Persona: First-time Candidate (Early Career)
+
+As a candidate, I want to sign up with email or social login, so that I can start quickly.
+
+As a candidate, I want to upload my CV and have it parsed, so that my profile is auto-filled.
+
+As a candidate, I want clear guidance on missing items, so that I can complete my profile fast.
+
+As a candidate, I want AI job matches with explanations, so that I understand why a role fits.
+
+As a candidate, I want to edit my profile and see updated matches, so that I can refine results.
+
+Persona: Experienced Professional (Mid/Senior)
+
+As a candidate, I want to import my LinkedIn profile, so that I reduce manual input.
+
+As a candidate, I want to specify preferences (location, salary range, remote), so that matches fit my constraints.
+
+As a candidate, I want to tailor my CV to a role, so that I can highlight the most relevant achievements.
+
+As a candidate, I want to track applications and get timely notifications, so that I stay informed.
+
+Persona: Returning Candidate
+
+As a candidate, I want to re-upload an updated CV, so that my profile stays current.
+
+As a candidate, I want to review a change log, so that I can see what the parser altered.
+
+As a candidate, I want to control visibility (public/limited/private), so that I can manage who sees my details.
+
+Persona: Support/Trust & Safety
+
+As support, I want to mask or remove sensitive PII on request, so that we comply with privacy policies.
+
+As support, I want diagnostic logs (non-PII) for parsing errors, so that I can resolve issues quickly.
+
+Functional Requirements
+Authentication & Onboarding (Priority: P0) -- Sign up/sign in: Email + OTP, OAuth (Google, LinkedIn), passwordless support. -- Consent capture: Terms, privacy, data processing, optional metrics consent. -- First-run wizard: CV upload or LinkedIn import; preference collection (location, work type, salary).
+
+Profile & CV Management (Priority: P0) -- CV upload: PDF/DOC/DOCX, max 10 MB; drag-and-drop and mobile upload. -- Parsing pipeline: Extract contact info, skills, experience, education, certifications. -- Review & edit UI: Side-by-side parsed data with inline editing and confidence tags. -- Versioning: Maintain CV versions and changes; revert capability. -- Profile sections: Summary, skills (weighted), experience (achievements), education, links (portfolio, GitHub).
+
+AI Analysis & Job Matching (Priority: P0) -- Skill extraction & normalization: Map to ontology; dedupe synonyms. -- Embedding-based matching: Candidate-to-job, job-to-candidate; freshness weighting. -- Explainability: Show “Why this job?” with top 3 skill/experience matches and gaps. -- Gap analysis & coaching: Recommendations to improve profile for target roles.
+
+Job Discovery & Applications (Priority: P1) -- Recommendations feed: Ranked, filterable by location, compensation, remote/on-site. -- Search & filters: Keyword, title, company, salary range, experience level. -- One-click apply: Use stored profile + selected CV version; role-specific cover letter suggestions. -- Save/skip jobs: Train recommender over time.
+
+Notifications & Communication (Priority: P1) -- In-app and email alerts: New matches, application status changes, profile completeness nudges. -- Frequency controls: Digest vs. real-time; unsubscribe compliance.
+
+Settings, Privacy & Security (Priority: P0) -- Privacy controls: Visibility levels; data export (JSON/PDF); delete account and data. -- PII handling: Mask sensitive fields; consented sharing with employers on apply. -- Session security: Device/session management; 2FA optional.
+
+Error Handling & Support (Priority: P0) -- Robust file validation: Type, size, password-locked documents, OCR fallback for image-based PDFs. -- Retry & recovery: Async parsing with progress states; manual entry fallback. -- Help center: Contextual tips; contact support form.
+
+Analytics & Observability (Priority: P1) -- Event tracking: Signup funnel, upload success/fail, parsing accuracy, match clicks, apply starts/completions. -- Operational metrics: Queue latency, error rates, time-to-first-recommendation.
+
+User Experience
+Entry Point & First-Time User Experience
+
+Discovery via job links, referrals, or SEO landing pages highlighting fast profile creation.
+
+Sign up with email/OAuth; accept terms and privacy; optional marketing and analytics consent.
+
+Onboarding wizard prompts: Upload CV or import from LinkedIn; set preferences (location, remote, salary).
+
+Core Experience
+
+Step 1: Upload or Import
+
+UI: Large dropzone with supported formats and size limit; show security/privacy assurances.
+
+Validation: File type/size checks; handle password-protected files with prompt to remove lock.
+
+Success: Show progress bar for parsing (0–100% with ETA); failure: surface helpful error and manual entry option.
+
+Step 2: Parsing & Review
+
+UI: Split-view—left parsed fields with confidence badges; right original CV preview.
+
+Data handling: Highlight low-confidence fields; auto-suggest corrections; support multi-language.
+
+Next: “Accept & Continue” to finalize profile; or “Edit field” for inline changes; autosave enabled.
+
+Step 3: Preference Capture
+
+UI: Sliders and multi-selects for role type, compensation, location, work authorization.
+
+Validation: Hard/soft constraints clearly labeled; show how preferences affect recommendations.
+
+Next: “Generate Matches” initiates AI matching.
+
+Step 4: Recommendations Feed
+
+UI: Ranked list with badges (Top Match, New, Remote), match score, and Why-this-job explainer.
+
+Interactions: Save, skip, or apply; feedback buttons (Not relevant, Too senior, Location mismatch) to tune model.
+
+Backend: Re-ranking after each interaction; decay older jobs; enforce employer activity freshness.
+
+Step 5: Application Flow
+
+UI: One-click Apply with selected CV version and optional role-tailored cover letter (AI-suggested snippet).
+
+Validation: Check required fields; show estimated time to complete if external application needed.
+
+Result: Confirmation toast and tracking on Applications tab; status updates via notifications.
+
+Step 6: Profile Management
+
+UI: Profile dashboard with completeness bar; sections for Skills, Experience, Education, Links.
+
+Actions: Edit sections, re-upload CV, manage versions, regenerate summary, import from LinkedIn.
+
+Backend: On edit, trigger incremental skill graph update and live re-ranking of matches.
+
+Step 7: Ongoing Engagement
+
+UI: Notifications center; weekly digest of new matches; prompts to add missing skills/achievements.
+
+Controls: Frequency settings; pause recommendations; privacy/visibility toggles.
+
+Advanced Features & Edge Cases
+
+OCR fallback for image-only PDFs; prompt users to verify detected text.
+
+Multi-CV support: Choose “General,” “Data Science,” “Product” versions per application.
+
+Internationalization: Date, currency, and locale-aware formatting; right-to-left support where needed.
+
+Duplicate account detection via hashed email/phone; merge flow with consent.
+
+External apply handoff: Detect ATS links; pre-fill if supported; warn about leaving site; bookmark status.
+
+Low/no match state: Provide skill-building tips, broader filters, and notify when new roles arrive.
+
+Accessibility-first: Full keyboard navigation; screen-reader labels; high-contrast theme.
+
+UI/UX Highlights
+
+Progressive disclosure: Keep early steps simple; advanced edits available after parsing.
+
+Real-time validation and inline error messaging; no dead-ends.
+
+Skeleton loaders and aggressive prefetching for perceived speed.
+
+Mobile-first responsive layout; thumb-friendly controls; safe area awareness.
+
+Explainability tooltips for AI decisions; clear opt-out for personalization.
+
+Clear privacy labels near sensitive fields (phone, email, work authorization).
+
+Narrative
+Amira, a mid-level marketing analyst, has been casually searching for a new role but dreads starting over with yet another application portal. She lands on Lean Workforce from a referral and signs up with Google in seconds. The onboarding wizard prompts her to upload her CV. Within moments, her profile is auto-filled: roles, achievements, and certifications appear with confidence badges. A few fields are flagged for review; she edits her job titles and adds a missing certification.
+
+She sets preferences for hybrid work in London and a salary range. The recommendations feed populates instantly with roles labeled Top Match. Each listing explains the fit: campaign attribution experience, SQL familiarity, and B2B SaaS background. One role shows a small gap—advanced marketing automation. The platform suggests a profile improvement and a short course.
+
+Amira clicks One-click Apply on two roles using her “Marketing-Focused” CV version. The platform generates a tailored cover letter draft based on her achievements and the job description. Applications are tracked centrally, and she opts into a weekly digest. Later, she re-uploads an updated CV; the system highlights changes and refreshes her matches, elevating several new roles.
+
+Within a week, Amira receives interview invites from two companies. For the businesses, the quality of applications improves—relevant, polished candidates appear faster. For Amira, the friction is gone: she spends less time on forms and more on preparing for conversations. The platform delivers clarity, speed, and control—turning a daunting search into a focused, confident journey.
+
+Success Metrics
+Time to Complete Profile: Median time from signup to 80% profile completeness under 5 minutes.
+
+Parsing Accuracy: ≥ 95% precision on core fields (name, title, company, dates); ≥ 85% on skills extraction.
+
+Match Engagement: ≥ 40% of users click at least one recommended job in first session; CTR on Top Match ≥ 12%.
+
+Application Conversion: ≥ 30% of users submit at least one application within 7 days of signup.
+
+Candidate Satisfaction: NPS ≥ 50; Onboarding CSAT ≥ 4.5/5; Reported data-control satisfaction ≥ 90%.
+
+User-Centric Metrics
+Onboarding completion rate and drop-off by step.
+
+First-week active days and session duration.
+
+Recommendations interacted per user; saves vs. skips ratio.
+
+Application starts and completions per user.
+
+Business Metrics
+Applications per job from recommended candidates.
+
+Employer response rate and time-to-first-response (proxy for match quality).
+
+Cost per acquisition (CPA) and cost per completed profile.
+
+Retention: 4-week candidate retention ≥ 35%.
+
+Technical Metrics
+API p95 latency ≤ 300 ms for core reads; ≤ 800 ms for writes.
+
+Parsing pipeline success rate ≥ 98%; OCR fallback success ≥ 90%.
+
+Uptime ≥ 99.9% monthly; error rate ≤ 0.5% for critical flows.
+
+Queue latency for AI scoring ≤ 2 seconds p95.
+
+Tracking Plan
+Auth: signup_started, signup_completed, oauth_provider_used.
+
+CV: cv_upload_attempted, cv_upload_success, cv_upload_fail_reason, parse_started, parse_completed, parse_confidence.
+
+Profile: field_edited, profile_completion_percent, preference_set.
+
+Recommendations: rec_impression, rec_click, why_explainer_viewed, job_saved, job_skipped.
+
+Applications: apply_started, cv_version_selected, cover_letter_generated, apply_submitted, apply_fail_reason.
+
+Notifications: notif_opt_in, digest_sent, notif_click.
+
+Privacy: data_export_requested, data_deleted, visibility_changed.
+
+Technical Considerations
+Technical Needs
+Front-end: Responsive web app with accessible components, state management for onboarding and profile; offline-friendly caching for draft edits.
+
+Back-end: REST/GraphQL API; asynchronous jobs for parsing, embedding generation, and matching; rate limiting and request idempotency.
+
+CV Parsing Pipeline: Document ingestion, format detection, text extraction (with OCR fallback), entity extraction (NER) for skills/experience/education, confidence scoring.
+
+AI Services: Skill normalization against a domain ontology; embedding models for candidate and job vectors; re-ranking with business rules; explainability layer.
+
+Data Models: Candidate, CVVersion, Experience, Education, Skill (weighted/normalized), Preference, Job, Application, FeatureFeedback.
+
+Integration Points
+OAuth providers: Google, LinkedIn for login and optional profile import.
+
+Job sources: Employer feeds (API/CSV), partner job boards, internal postings.
+
+Email/Notification service: Transactional emails and digests.
+
+Optional ATS handoff: Pre-fill when partners support standard schema; otherwise external redirect with tracking.
+
+Data Storage & Privacy
+Storage: Encrypted at rest for PII; separate blob storage for CV files; versioned records.
+
+Data Flow: CV upload → parsing queue → structured profile → AI embedding and matching → recommendation feed.
+
+Privacy: GDPR/CCPA compliance; explicit consent for data processing; access logs; right-to-access/export/delete; minimal PII exposure to employers until application.
+
+Anonymization: Hash identifiers for dedupe; redact PII in logs; differential privacy for analytics aggregates.
+
+Scalability & Performance
+Expected Load: Launch 1k DAU scaling to 50k DAU; peak ingest spikes during campaigns.
+
+Architecture: Horizontal scale on stateless services; autoscaling for parsing/AI workers; caching for recommendations; circuit breakers and backpressure.
+
+Performance: Precompute top-N recommendations nightly; online re-rank on interaction.
+
+Potential Challenges
+CV variability and noisy formats; mitigate with multi-pass parsing and confidence-driven UI.
+
+Bias in AI matching; address with fairness audits, feature constraints, and explainability.
+
+External ATS handoffs causing drop-off; mitigate with pre-fill and clear expectations.
+
+Duplicate or fraudulent profiles; mitigate with anomaly detection and manual review flags.
+
+Internationalization nuances (date, name order, education equivalence).
+
+Milestones & Sequencing
+Project Estimate
+Medium: 2–4 weeks for core MVP; +2 weeks for polish and integrations.
+Team Size & Composition
+Small, fast-moving team (3 people):
+
+1 Product/Design (research, UX, UI, copy, metrics).
+
+1 Full-Stack Engineer (frontend + backend API).
+
+1 ML/Backend Engineer (parsing pipeline, embeddings, matching).
+
+Suggested Phases
+Phase 1: Prototype (1 week)
+
+Key Deliverables:
+
+Product/Design: Low/medium-fidelity flows for onboarding, review, recommendations.
+
+Engineering: Clickable prototype; stubbed parser; static recommendation list.
+
+Dependencies: Sample CVs and seed job dataset.
+
+Phase 2: MVP Parsing + Profile + Basic Matching (1–2 weeks)
+
+Key Deliverables:
+
+Engineering: CV upload, validation, basic parsing with OCR fallback; profile editor; preferences; async queues.
+
+ML/Backend: Skill normalization; initial embedding model; Top-N recommendations; explainability v1.
+
+Product/Design: Accessible components; empty/error states; privacy controls.
+
+Dependencies: Ontology seed, email service, minimal job feed.
+
+Phase 3: Applications + Notifications + Metrics (1 week)
+
+Key Deliverables:
+
+Engineering: One-click apply with CV versioning; application tracker; in-app/email notifications; event tracking.
+
+ML/Backend: Re-ranking on interactions; feedback loop.
+
+Product/Design: Cover letter assist flow; digest preferences.
+
+Dependencies: Notification provider, analytics pipeline.
+
+Phase 4: Polish, QA, and Beta (1 week)
+
+Key Deliverables:
+
+Engineering: Performance tuning, caching, error handling, privacy export/delete.
+
+ML/Backend: Bias checks, guardrails, model monitoring.
+
+Product/Design: Usability fixes, internationalization, accessibility pass.
+
+Dependencies: Beta candidate cohort, support scripts.
+
+Phase 5: GA Hardening (Optional, 1 week)
+
+Key Deliverables:
+
+Engineering: Observability dashboards, autoscaling, rate limiting.
+
+ML/Backend: Model retraining cadence; drift alerts.
+
+Product/Design: Launch materials, help center content.
+
+Dependencies: Production job feeds and partner sign-offs.

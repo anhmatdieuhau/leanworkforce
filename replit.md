@@ -120,13 +120,22 @@ Preferred communication style: Simple, everyday language.
 - **Current**: Simple localStorage-based session (client-side user data storage)
 - **Email Delivery**: Mock implementation (console.log in development)
 
+**Authentication Guards**:
+- **Business Routes**: `/business`, `/business/projects/*` require business role authentication
+- **Candidate Routes**: `/candidate/dashboard`, `/candidate/profile` require any authenticated user
+- **Public Route**: `/candidate` (CV upload) accessible without login for guest candidates
+- **ProtectedRoute Component**: Automatic redirect to `/login` for unauthorized access
+- **Role-Based Routing**: Business users → `/business`, Candidates → `/candidate/dashboard`
+
+**Email Delivery**: SendGrid integration via Replit connector for real email delivery in production. Falls back to console logging if SendGrid fails.
+
 **Production Considerations** (not yet implemented):
-- Server-side session tokens with httpOnly cookies for security
-- Real email service integration (SendGrid, Mailgun, AWS SES)
-- Business user account validation and role verification
-- Enhanced email validation with schema enforcement
+- Server-side session tokens with httpOnly cookies for security (currently uses localStorage)
+- Business user pre-registration system (currently detected via project ownership)
+- Enhanced email validation with Zod schema enforcement
 - Transactional guarantees for magic link lifecycle
 - CSRF protection and secure session handling
+- Business users without projects default to candidate role - consider explicit business user registration table
 
 ### External Dependencies
 

@@ -76,19 +76,10 @@ export default function LandingPage() {
             </div>
             <div className="flex gap-3">
               <Button 
-                variant="ghost" 
-                onClick={() => setLocation("/business")}
-                data-testid="button-business-portal"
+                onClick={() => setLocation("/login")}
+                data-testid="button-login"
               >
-                <Building2 className="w-4 h-4 mr-2" />
-                Business
-              </Button>
-              <Button 
-                onClick={() => setLocation("/candidate")}
-                data-testid="button-candidate-portal"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Candidate Portal
+                Login
               </Button>
             </div>
           </div>

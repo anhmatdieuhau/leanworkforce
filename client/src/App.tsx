@@ -10,15 +10,20 @@ import CandidateDashboard from "@/pages/CandidateDashboard";
 import CreateProject from "@/pages/CreateProject";
 import ProjectDetail from "@/pages/ProjectDetail";
 import CandidateProfile from "@/pages/CandidateProfile";
+import Login from "@/pages/Login";
+import VerifyMagicLink from "@/pages/VerifyMagicLink";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
+      <Route path="/login" component={Login} />
+      <Route path="/auth/verify" component={VerifyMagicLink} />
       <Route path="/business" component={BusinessDashboard} />
       <Route path="/business/projects/new" component={CreateProject} />
       <Route path="/business/projects/:id" component={ProjectDetail} />
       <Route path="/candidate" component={CandidateDashboard} />
+      <Route path="/candidate/dashboard" component={CandidateDashboard} />
       <Route path="/candidate/profile" component={CandidateProfile} />
       <Route component={NotFound} />
     </Switch>

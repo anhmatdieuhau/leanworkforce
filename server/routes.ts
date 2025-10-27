@@ -977,6 +977,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== MAGIC LINK AUTHENTICATION ==========
+  
+  const { generateMagicLinkToken, generateMagicLinkUrl, sendMagicLinkEmail } = await import("./magic-link-utils");
+  
+  // Request a magic link
+  app.post("/api/auth/request-magic-link", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ error: "Valid email is required" });
+      }
+
+      const emailLower = email.toLowerCase().trim();
+
+      // Rate limiting: Check recent requests (max 5 per hour)
+      const recentLinks = await storage.getRecentMagicLinksByEmail(emailLower, 60);
+      if (recentLinks.length >= 5) {
+        return res.status(429).json({ 
+          error: "Too many requests. Please wait before requesting another link." 
+        });
+      }
+
+      // Invalidate all previous unused magic links for this email
+      await storage.invalidateOldMagicLinks(emailLower);
+
+      // Check if user exists and determine role
+      let role = "candidate"; // Default role
+      let userId = null;
+      
+      const candidate = await storage.getCandidateByEmail(emailLower);
+      if (candidate) {
+        role = "candidate";
+        userId = candidate.id;
+      } else {
+        // Check if it's a business user (we'll check by project ownership later)
+        // For now, default to candidate
+        role = "candidate";
+      }
+
+      // Generate cryptographically secure token
+      const token = generateMagicLinkToken();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Get client info for tracking
+      const ipAddress = req.ip || req.socket.remoteAddress || "unknown";
+      const userAgent = req.get("user-agent") || "unknown";
+
+      // Save magic link to database
+      await storage.createMagicLink({
+        token,
+        email: emailLower,
+        userId,
+        role,
+        used: false,
+        ipAddress,
+        userAgent,
+        expiresAt,
+      });
+
+      // Generate magic link URL
+      const baseUrl = process.env.REPL_SLUG 
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : `http://localhost:5000`;
+      const magicLinkUrl = generateMagicLinkUrl(token, baseUrl);
+
+      // Send email (mock in development)
+      await sendMagicLinkEmail(emailLower, magicLinkUrl);
+
+      res.json({ 
+        success: true, 
+        message: "Magic link sent to your email. Please check your inbox." 
+      });
+    } catch (error: any) {
+      console.error("Error requesting magic link:", error);
+      res.status(500).json({ error: "Failed to send magic link. Please try again." });
+    }
+  });
+
+  // Verify magic link token
+  app.get("/api/auth/verify-magic-link", async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ error: "Token is required" });
+      }
+
+      // Fetch magic link from database
+      const magicLink = await storage.getMagicLinkByToken(token);
+
+      if (!magicLink) {
+        return res.status(404).json({ error: "Invalid link. This link is not valid." });
+      }
+
+      // Check if already used
+      if (magicLink.used) {
+        return res.status(400).json({ error: "This link has already been used." });
+      }
+
+      // Check if expired
+      const now = new Date();
+      if (now > magicLink.expiresAt) {
+        return res.status(400).json({ error: "This link has expired. Please request a new one." });
+      }
+
+      // Mark as used
+      await storage.markMagicLinkAsUsed(token);
+
+      // Get or create user account
+      let user;
+      if (magicLink.role === "candidate") {
+        user = await storage.getCandidateByEmail(magicLink.email);
+        
+        // Create shadow account if doesn't exist
+        if (!user) {
+          user = await storage.createCandidate({
+            email: magicLink.email,
+            name: magicLink.email.split("@")[0], // Default name from email
+          });
+        }
+      } else {
+        // Business user logic (simplified for now)
+        user = { email: magicLink.email, role: "business" };
+      }
+
+      // Create session (for now, just return user data - you can implement express-session later)
+      res.json({
+        success: true,
+        user: {
+          id: user.id || "business-user",
+          email: magicLink.email,
+          role: magicLink.role,
+          name: user.name || magicLink.email.split("@")[0],
+        },
+        redirectTo: magicLink.role === "business" ? "/business" : "/candidate/dashboard",
+      });
+    } catch (error: any) {
+      console.error("Error verifying magic link:", error);
+      res.status(500).json({ error: "Something went wrong. Please try again later." });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,6 +1,6 @@
 import {
   projects, milestones, candidates, fitScores, riskAlerts, jiraSettings,
-  savedJobs, applications, candidateActions,
+  savedJobs, applications, candidateActions, magicLinks,
   type Project, type InsertProject,
   type Milestone, type InsertMilestone,
   type Candidate, type InsertCandidate,
@@ -9,7 +9,8 @@ import {
   type JiraSettings, type InsertJiraSettings,
   type SavedJob, type InsertSavedJob,
   type Application, type InsertApplication,
-  type CandidateAction, type InsertCandidateAction
+  type CandidateAction, type InsertCandidateAction,
+  type MagicLink, type InsertMagicLink
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -70,6 +71,13 @@ export interface IStorage {
   recordAction(candidateId: string, milestoneId: string, action: string): Promise<CandidateAction>;
   getActions(candidateId: string): Promise<CandidateAction[]>;
   hasAction(candidateId: string, milestoneId: string, action: string): Promise<boolean>;
+  
+  // Magic Links
+  createMagicLink(magicLink: InsertMagicLink): Promise<MagicLink>;
+  getMagicLinkByToken(token: string): Promise<MagicLink | undefined>;
+  markMagicLinkAsUsed(token: string): Promise<MagicLink | undefined>;
+  invalidateOldMagicLinks(email: string): Promise<void>;
+  getRecentMagicLinksByEmail(email: string, sinceMinutes: number): Promise<MagicLink[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -309,6 +317,52 @@ export class DatabaseStorage implements IStorage {
       )
     );
     return !!candidateAction;
+  }
+
+  // Magic Links
+  async createMagicLink(insertMagicLink: InsertMagicLink): Promise<MagicLink> {
+    const [magicLink] = await db.insert(magicLinks).values(insertMagicLink).returning();
+    return magicLink;
+  }
+
+  async getMagicLinkByToken(token: string): Promise<MagicLink | undefined> {
+    const [magicLink] = await db.select().from(magicLinks).where(eq(magicLinks.token, token));
+    return magicLink || undefined;
+  }
+
+  async markMagicLinkAsUsed(token: string): Promise<MagicLink | undefined> {
+    const [magicLink] = await db
+      .update(magicLinks)
+      .set({ used: true, usedAt: new Date() })
+      .where(eq(magicLinks.token, token))
+      .returning();
+    return magicLink || undefined;
+  }
+
+  async invalidateOldMagicLinks(email: string): Promise<void> {
+    await db
+      .update(magicLinks)
+      .set({ used: true, usedAt: new Date() })
+      .where(
+        and(
+          eq(magicLinks.email, email),
+          eq(magicLinks.used, false)
+        )
+      );
+  }
+
+  async getRecentMagicLinksByEmail(email: string, sinceMinutes: number): Promise<MagicLink[]> {
+    const since = new Date(Date.now() - sinceMinutes * 60 * 1000);
+    return await db
+      .select()
+      .from(magicLinks)
+      .where(
+        and(
+          eq(magicLinks.email, email),
+          gte(magicLinks.createdAt, since)
+        )
+      )
+      .orderBy(desc(magicLinks.createdAt));
   }
 }
 

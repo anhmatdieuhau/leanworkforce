@@ -102,11 +102,31 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 
-**Current State**: Demo mode with hardcoded user identifiers (`demo-user`, `demo-business-user`) for development.
+**Current State**: Magic Link authentication system implemented for passwordless login.
 
-**Session Management**: Express session infrastructure present with connect-pg-simple for PostgreSQL session storage (configured but not actively enforcing authentication).
+**Magic Link Authentication**:
+- **Token Generation**: Cryptographically secure 32-character base64url tokens
+- **Expiry**: 10-minute TTL (time-to-live) for security
+- **Single-Use**: Tokens marked as used after verification
+- **Rate Limiting**: Maximum 5 requests per hour per email address
+- **Database Table**: `magicLinks` stores token, email, expiry, IP address, user agent
+- **API Endpoints**: 
+  - `POST /api/auth/request-magic-link` - Request login link
+  - `GET /api/auth/verify-magic-link` - Verify token and create session
+- **Role Detection**: Automatically determines candidate vs business user role
+- **Shadow Accounts**: Creates candidate account on first login if email not registered
 
-**Future Considerations**: Architecture supports adding authentication middleware, with separate business and candidate user contexts already established in the data model.
+**Session Management**: 
+- **Current**: Simple localStorage-based session (client-side user data storage)
+- **Email Delivery**: Mock implementation (console.log in development)
+
+**Production Considerations** (not yet implemented):
+- Server-side session tokens with httpOnly cookies for security
+- Real email service integration (SendGrid, Mailgun, AWS SES)
+- Business user account validation and role verification
+- Enhanced email validation with schema enforcement
+- Transactional guarantees for magic link lifecycle
+- CSRF protection and secure session handling
 
 ### External Dependencies
 

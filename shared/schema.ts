@@ -292,3 +292,26 @@ export const insertJiraSettingsSchema = createInsertSchema(jiraSettings).omit({
 
 export type InsertJiraSettings = z.infer<typeof insertJiraSettingsSchema>;
 export type JiraSettings = typeof jiraSettings.$inferSelect;
+
+// ========== MAGIC LINKS ==========
+export const magicLinks = pgTable("magic_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  email: text("email").notNull(),
+  userId: varchar("user_id"), // Null if shadow account
+  role: text("role").default("candidate"), // candidate or business
+  used: boolean("used").default(false).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertMagicLinkSchema = createInsertSchema(magicLinks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMagicLink = z.infer<typeof insertMagicLinkSchema>;
+export type MagicLink = typeof magicLinks.$inferSelect;

@@ -71,4 +71,4 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["jira:1.0.0", "javascript_gemini:1.0.0", "javascript_database:1.0.0"]
+integrations = ["jira:1.0.0", "javascript_gemini:1.0.0", "javascript_database:1.0.0", "sendgrid:1.0.0"]

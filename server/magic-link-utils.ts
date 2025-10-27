@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { sendMagicLinkEmail as sendEmailViaSendGrid } from "./sendgrid.js";
 
 /**
  * Generate a cryptographically secure token for magic links
@@ -16,13 +17,17 @@ export function generateMagicLinkUrl(token: string, baseUrl: string): string {
 }
 
 /**
- * Mock email sender for development
- * In production, this would use a real email service (SendGrid, Mailgun, etc.)
+ * Send magic link email via SendGrid
+ * Falls back to console.log if SendGrid is not configured
  */
 export async function sendMagicLinkEmail(email: string, magicLinkUrl: string): Promise<void> {
-  console.log(`
+  try {
+    await sendEmailViaSendGrid(email, magicLinkUrl);
+  } catch (error) {
+    console.error('❌ SendGrid email failed, falling back to console log:', error);
+    console.log(`
 =================================================================
-🔐 MAGIC LINK EMAIL (Demo Mode - Check Server Logs)
+🔐 MAGIC LINK EMAIL (Fallback Mode - SendGrid Failed)
 =================================================================
 To: ${email}
 Subject: Your Login Link for Lean Workforce
@@ -35,12 +40,6 @@ This link will expire in 10 minutes and can only be used once.
 
 If you didn't request this link, you can safely ignore this email.
 =================================================================
-  `);
-  
-  // In production, implement real email sending:
-  // await emailService.send({
-  //   to: email,
-  //   subject: "Your Login Link for Lean Workforce",
-  //   html: emailTemplate(magicLinkUrl),
-  // });
+    `);
+  }
 }

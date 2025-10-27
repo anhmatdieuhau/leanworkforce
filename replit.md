@@ -28,6 +28,11 @@ Preferred communication style: Simple, everyday language.
 - Landing page with workflow visualization
 - Business dashboard with project management and Jira import
 - Candidate dashboard with profile management and job recommendations
+  - **CV Upload Progress**: Multi-stage visual feedback (uploading → parsing → analyzing → complete) with progress bar
+  - **Job Recommendations**: AI-powered matches with >70% fit score, sorted by relevance
+  - **Explainability**: Collapsible "Why this job?" component showing fit score breakdown (Skills Match, Experience Level, Soft Skills percentages)
+  - **Job Actions**: Save for later, Skip (filters from future recommendations), Apply (one-click submission)
+  - **Stats Dashboard**: Real-time tracking of applications count, total matches, and average fit score
 - Project detail view with milestone tracking, candidate matching, and grouped task view
   - **Default view**: Grouped by sprint (user preference)
   - Timeline view for milestone list visualization
@@ -35,6 +40,9 @@ Preferred communication style: Simple, everyday language.
   - Toggle between view modes and grouping options
   - **Task Display**: Each task shows description (ADF-parsed to readable text) and "Original Estimate" from Jira
 - Profile creation/editing with CV upload and AI parsing
+  - **Form Repopulation**: Async data loading with loading guard prevents empty field flash
+  - **Email Field**: Read-only as it serves as account identifier in demo mode
+  - **CV Analysis Results**: AI-extracted skills and experience displayed after upload
 
 **Jira Description Parsing**: Frontend uses ADF (Atlassian Document Format) parser (`client/src/lib/adf-parser.ts`) to convert structured JSON descriptions from Jira into readable plain text with proper formatting (bullet points as •, paragraphs, etc.).
 
@@ -46,6 +54,14 @@ Preferred communication style: Simple, everyday language.
 - `/api/projects` - Project CRUD operations
 - `/api/milestones` - Milestone management
 - `/api/candidates` - Candidate profiles and CV uploads
+  - `GET /api/candidate/profile` - Get candidate profile
+  - `PUT /api/candidate/profile` - Update candidate profile (email is read-only)
+  - `POST /api/candidate/upload-cv` - Upload and analyze CV with multipart/form-data
+  - `GET /api/candidate/recommendations` - Get AI-powered job matches (>70% fit, filters skipped jobs)
+  - `POST /api/candidate/save-job` - Save job for later
+  - `POST /api/candidate/skip-job` - Skip job (removes from future recommendations)
+  - `POST /api/candidate/apply` - Submit job application
+  - `GET /api/candidate/stats` - Get applications count, matches, and average fit score
 - `/api/fit-scores` - AI-powered matching calculations
 - `/api/jira/*` - Jira integration endpoints including:
   - `POST /api/jira/import-projects` - Import all Jira projects with automatic skill map generation and candidate matching
@@ -76,6 +92,9 @@ Preferred communication style: Simple, everyday language.
 - **candidates**: User profiles with skills arrays, availability windows, CV text storage, and AI-parsed metadata
 - **fitScores**: Calculated matching scores linking candidates to milestones with detailed breakdown (skillOverlap, experienceMatch, softSkillRelevance)
 - **riskAlerts**: Automated alerts for milestone delays with AI-generated recommendations and backup candidate suggestions
+- **savedJobs**: Candidate-saved job opportunities (candidateId, milestoneId, timestamps)
+- **applications**: Job applications submitted by candidates (candidateId, milestoneId, projectId, status, timestamps)
+- **candidateActions**: Tracking system for all candidate interactions (save, skip, view actions)
 
 **Relationships**: One-to-many between projects and milestones; many-to-many implicit relationship between candidates and milestones via fit scores.
 

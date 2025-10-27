@@ -1,0 +1,102 @@
+Magic Link Login – UX Ruleset & Behavior Definition
+👤 User Stories
+1. As a candidate or business user, I want to log in using only my email so that I don’t need to remember a password.
+2. As a returning user, I want a secure, time-limited login link so my account remains protected.
+3. As a user, I want the system to recognize my role (candidate/business) and route me to the correct dashboard after login.
+4. As a user, I want a clear message if my login link is expired or invalid, so I can try again easily.
+5. As support/admin, I want to track magic link usage so I can debug issues if users cannot log in.
+✅ Acceptance Criteria (AC)
+ID	Scenario	Given	When	Then
+AC1	Request Magic Link	User is on login page	User enters valid email & submits	Magic link is sent to their email
+AC2	Link Opens	User receives email	User clicks the magic link within 10 minutes	They are logged in and redirected to the correct dashboard
+AC3	Expired Link	Magic link is clicked after 10 minutes	Link is expired	Show "Link expired" error with [Resend] option
+AC4	Invalid Token	User tampers with link or uses fake token	Clicks link	Show "Invalid link" message
+AC5	Token Reuse	User tries to reuse the same link	Token already marked as used	Show "Link already used" error
+AC6	Role Detection	User logs in with valid link	User has a role assigned	Redirect to /business or /candidate accordingly
+AC7	Email Not Registered	Email doesn't exist in system	User submits form	Create shadow account and send link (for first-time)
+AC8	Support Case	Admin checks logs	Token failed	Can see why: expired, not found, already used, etc.
+🎯 Success Case
+
+User enters email → receives email within 10s.
+
+Clicks magic link → authenticated, session created.
+
+Redirects to /candidate or /business based on role.
+
+No password required, no friction. Token is single-use & expired after use.
+
+Link usage is tracked in logs (timestamp, IP).
+
+🧨 Edge Cases
+
+Email Delayed or Caught in Spam
+
+User doesn't see link in inbox. → Add copy: “Check Spam folder or wait up to 60 seconds.”
+
+Option to [Resend Link] after cooldown (e.g., 30 seconds).
+
+Multiple Requests in a Row
+
+User requests magic link 5 times in 2 minutes → only latest token is valid. Older tokens are revoked.
+
+User Clicks Link on Another Device
+
+Token works as long as it's not used or expired. Creates session on device used.
+
+Candidate Logs in but Account is Incomplete
+
+Redirect to onboarding flow /candidate/profile instead of dashboard.
+
+❌ Error Cases
+Case	Trigger	Message to Show
+Invalid Token	Token not found in DB	“This login link is invalid.”
+Expired Token	Token older than 10 mins	“This link has expired. [Resend Link]”
+Already Used	Token is marked used	“This link has already been used.”
+Internal Error	DB error / system crash	“Something went wrong. Please try again later.”
+📜 Business Rules
+
+Token Generation
+
+Token is cryptographically secure, 32+ characters, UUIDv4 or similar.
+
+Stored with: email, user ID (if known), createdAt, expiresAt, used: boolean.
+
+Token Validity
+
+TTL = 10 minutes from creation.
+
+Single-use only; marked used=true on login.
+
+Account Creation
+
+If email is not registered, system creates shadow account with role (default = candidate) and triggers onboarding after login.
+
+Role-Based Routing
+
+After token is verified:
+
+If user.role == business → redirect to /business
+
+If user.role == candidate → redirect to /candidate
+
+If undefined → redirect to onboarding flow
+
+Rate Limiting
+
+Max 5 requests per hour per email.
+
+Prevent abuse with IP + user-agent logging.
+
+Tracking & Analytics
+
+Track events:
+
+magic_link_requested
+
+magic_link_sent
+
+magic_link_clicked
+
+magic_link_failed (expired/invalid)
+
+magic_link_used

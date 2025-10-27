@@ -34,11 +34,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/business/projects/:id">
-        {(params) => (
-          <ProtectedRoute requireBusiness>
-            <ProjectDetail params={params} />
-          </ProtectedRoute>
-        )}
+        <ProtectedRoute requireBusiness>
+          <ProjectDetail />
+        </ProtectedRoute>
       </Route>
       
       {/* Candidate routes - /candidate open for CV upload, dashboard requires auth */}

@@ -1011,10 +1011,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (candidate) {
         role = "candidate";
         userId = candidate.id;
+        console.log(`🔍 Role detection for ${emailLower}: Found candidate → role = candidate`);
       } else {
-        // Check if it's a business user (we'll check by project ownership later)
-        // For now, default to candidate
-        role = "candidate";
+        // Check if email belongs to a business user (check project ownership)
+        const allProjects = await storage.getAllProjects();
+        const userProjects = allProjects.filter(p => p.businessUserId === emailLower);
+        
+        console.log(`🔍 Role detection for ${emailLower}: Checking projects... found ${userProjects.length} projects`);
+        
+        if (userProjects.length > 0) {
+          role = "business";
+          userId = emailLower; // Use email as business user ID
+          console.log(`🔍 Role detection for ${emailLower}: Has projects → role = business`);
+        } else {
+          // Default to candidate for new users (shadow accounts will be created)
+          role = "candidate";
+          console.log(`🔍 Role detection for ${emailLower}: No projects → role = candidate (default)`);
+        }
       }
 
       // Generate cryptographically secure token

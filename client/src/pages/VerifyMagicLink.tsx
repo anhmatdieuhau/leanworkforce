@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { setUser } from "@/lib/auth";
 
 export default function VerifyMagicLink() {
   const [, setLocation] = useLocation();
@@ -30,8 +31,8 @@ export default function VerifyMagicLink() {
           throw new Error(data.error || "Verification failed");
         }
 
-        // Success! Store user data in localStorage (simple session management)
-        localStorage.setItem("user", JSON.stringify(data.user));
+        // Success! Store user session
+        setUser(data.user);
         
         setStatus("success");
         setRedirectPath(data.redirectTo);

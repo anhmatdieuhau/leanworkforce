@@ -48,12 +48,12 @@ function Router() {
       <Route path="/candidate" component={CandidateLanding} />
       <Route path="/candidate/upload" component={CandidateUpload} />
       <Route path="/candidate/dashboard">
-        <ProtectedRoute>
+        <ProtectedRoute requireCandidate>
           <CandidateDashboard />
         </ProtectedRoute>
       </Route>
       <Route path="/candidate/profile">
-        <ProtectedRoute>
+        <ProtectedRoute requireCandidate>
           <CandidateProfile />
         </ProtectedRoute>
       </Route>

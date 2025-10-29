@@ -6,23 +6,42 @@ import { Loader2 } from "lucide-react";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireBusiness?: boolean;
+  requireCandidate?: boolean;
 }
 
-export function ProtectedRoute({ children, requireBusiness = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ 
+  children, 
+  requireBusiness = false,
+  requireCandidate = false 
+}: ProtectedRouteProps) {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      setLocation("/");
+      // Not logged in → Redirect to home or appropriate login
+      const loginPath = requireBusiness ? "/business-login" : 
+                       requireCandidate ? "/candidate-login" : "/";
+      setLocation(loginPath);
       return;
     }
 
-    if (!isLoading && requireBusiness && user?.role !== "business") {
-      setLocation("/candidate/dashboard");
-      return;
+    if (!isLoading && user) {
+      // Business route but wrong role
+      if (requireBusiness && user.role !== "business") {
+        const dashboardPath = user.role === "candidate" ? "/candidate/dashboard" : "/";
+        setLocation(dashboardPath);
+        return;
+      }
+
+      // Candidate route but wrong role
+      if (requireCandidate && user.role !== "candidate") {
+        const dashboardPath = user.role === "business" ? "/business" : "/";
+        setLocation(dashboardPath);
+        return;
+      }
     }
-  }, [user, isLoading, setLocation, requireBusiness]);
+  }, [user, isLoading, setLocation, requireBusiness, requireCandidate]);
 
   if (isLoading) {
     return (
@@ -36,7 +55,12 @@ export function ProtectedRoute({ children, requireBusiness = false }: ProtectedR
     return null;
   }
 
+  // Block wrong role
   if (requireBusiness && user.role !== "business") {
+    return null;
+  }
+
+  if (requireCandidate && user.role !== "candidate") {
     return null;
   }
 

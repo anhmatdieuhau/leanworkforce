@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
@@ -11,6 +11,34 @@ import { validateFileType } from "./document-parser";
 import { calculateFallbackFitScore, extractFallbackSkillMap } from "./fallback-scoring";
 import { encrypt, decrypt, safeEncrypt, safeDecrypt } from "./encryption";
 import { startJobWorker } from "./job-worker";
+
+// ========== AUTH MIDDLEWARE ==========
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId || !req.session.email || !req.session.role) {
+    return res.status(401).json({ error: "Unauthorized. Please log in." });
+  }
+  next();
+}
+
+function requireBusiness(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId || !req.session.email || !req.session.role) {
+    return res.status(401).json({ error: "Unauthorized. Please log in." });
+  }
+  if (req.session.role !== "business") {
+    return res.status(403).json({ error: "Forbidden. Business access required." });
+  }
+  next();
+}
+
+function requireCandidate(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId || !req.session.email || !req.session.role) {
+    return res.status(401).json({ error: "Unauthorized. Please log in." });
+  }
+  if (req.session.role !== "candidate") {
+    return res.status(403).json({ error: "Forbidden. Candidate access required." });
+  }
+  next();
+}
 
 // Configure multer to accept PDF, DOC, DOCX, TXT files
 const upload = multer({ 

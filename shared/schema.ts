@@ -39,7 +39,10 @@ export const milestones = pgTable("milestones", {
   status: text("status").notNull().default("pending"), // pending, in-progress, completed, delayed
   estimatedHours: integer("estimated_hours"),
   assignedCandidateId: varchar("assigned_candidate_id"),
+  assignmentStatus: text("assignment_status").default("unassigned"), // unassigned, offered, confirmed, active, completed
+  assignmentConfirmedAt: timestamp("assignment_confirmed_at"),
   backupCandidateId: varchar("backup_candidate_id"),
+  backupAssignmentStatus: text("backup_assignment_status").default("none"), // none, standby, offered, active
   jiraIssueKey: text("jira_issue_key"),
   jiraEpicKey: text("jira_epic_key"),
   jiraSprintId: text("jira_sprint_id"),

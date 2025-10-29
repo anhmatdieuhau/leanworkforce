@@ -87,6 +87,13 @@ export interface IStorage {
   updateJob(id: string, data: Partial<InsertBackgroundJob>): Promise<BackgroundJob | undefined>;
   getPendingJobs(limit: number): Promise<BackgroundJob[]>;
   getJobsByUser(userId: string): Promise<BackgroundJob[]>;
+  
+  // Jira Sync Logs
+  createJiraSyncLog(log: InsertJiraSyncLog): Promise<JiraSyncLog>;
+  updateJiraSyncLog(id: string, data: Partial<InsertJiraSyncLog>): Promise<JiraSyncLog | undefined>;
+  getJiraSyncLogs(businessUserId: string, limit?: number): Promise<JiraSyncLog[]>;
+  getJiraSyncLogsByProject(projectId: string): Promise<JiraSyncLog[]>;
+  getFailedJiraSyncLogs(businessUserId: string): Promise<JiraSyncLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -409,6 +416,47 @@ export class DatabaseStorage implements IStorage {
       .from(backgroundJobs)
       .where(eq(backgroundJobs.userId, userId))
       .orderBy(desc(backgroundJobs.createdAt));
+  }
+  
+  // Jira Sync Logs
+  async createJiraSyncLog(insertLog: InsertJiraSyncLog): Promise<JiraSyncLog> {
+    const [log] = await db.insert(jiraSyncLogs).values(insertLog).returning();
+    return log;
+  }
+  
+  async updateJiraSyncLog(id: string, data: Partial<InsertJiraSyncLog>): Promise<JiraSyncLog | undefined> {
+    const [log] = await db.update(jiraSyncLogs).set(data).where(eq(jiraSyncLogs.id, id)).returning();
+    return log || undefined;
+  }
+  
+  async getJiraSyncLogs(businessUserId: string, limit: number = 50): Promise<JiraSyncLog[]> {
+    return await db
+      .select()
+      .from(jiraSyncLogs)
+      .where(eq(jiraSyncLogs.businessUserId, businessUserId))
+      .orderBy(desc(jiraSyncLogs.createdAt))
+      .limit(limit);
+  }
+  
+  async getJiraSyncLogsByProject(projectId: string): Promise<JiraSyncLog[]> {
+    return await db
+      .select()
+      .from(jiraSyncLogs)
+      .where(eq(jiraSyncLogs.projectId, projectId))
+      .orderBy(desc(jiraSyncLogs.createdAt));
+  }
+  
+  async getFailedJiraSyncLogs(businessUserId: string): Promise<JiraSyncLog[]> {
+    return await db
+      .select()
+      .from(jiraSyncLogs)
+      .where(
+        and(
+          eq(jiraSyncLogs.businessUserId, businessUserId),
+          eq(jiraSyncLogs.status, "failed")
+        )
+      )
+      .orderBy(desc(jiraSyncLogs.createdAt));
   }
 }
 

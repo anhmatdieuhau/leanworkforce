@@ -12,9 +12,23 @@ import crypto from "crypto";
  */
 function getEncryptionKey(): string {
   const key = process.env.ENCRYPTION_KEY;
+  const isProduction = process.env.NODE_ENV === 'production';
   
   if (!key) {
-    // Generate temporary key for development - WARNING: tokens will be lost on restart
+    if (isProduction) {
+      // HARD REQUIREMENT in production - fail fast
+      throw new Error(
+        '\n❌ CRITICAL: ENCRYPTION_KEY is required in production!\n' +
+        '   Without a persistent encryption key, Jira API tokens will be corrupted on restart.\n\n' +
+        '   Generate a secure 32-byte encryption key:\n' +
+        '   node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"\n\n' +
+        '   Add to environment:\n' +
+        '   ENCRYPTION_KEY=<your-generated-key>\n\n' +
+        '   Production deployment cannot continue without this key.\n'
+      );
+    }
+    
+    // Development only - allow with warning
     console.warn(
       '\n⚠️  WARNING: ENCRYPTION_KEY not set - using temporary key!\n' +
       '   Jira API tokens will be corrupted on restart.\n' +

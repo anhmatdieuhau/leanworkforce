@@ -32,7 +32,7 @@ export interface FitScoreAnalysis {
 }
 
 export interface RiskAnalysis {
-  risk_level: "low" | "medium" | "high";
+  risk_level: "low" | "medium" | "high" | "critical";
   delay_percentage: number;
   predicted_issues: string[];
   recommendations: string[];
@@ -247,15 +247,17 @@ Estimated Hours: ${estimatedHours}
 Current Delay: ${delayPercentage}%
 
 Analyze the risk and provide:
-1. Risk Level (low, medium, high)
+1. Risk Level (low, medium, high, critical)
 2. Predicted Issues (what could go wrong)
 3. Recommendations (how to mitigate)
 4. Whether backup talent should be activated (true/false)
 
-Risk criteria:
-- Delay <10%: Low risk
-- Delay 10-20%: Medium risk
-- Delay >20%: High risk
+Risk criteria (4-tier escalation):
+- Delay <10%: No significant risk
+- Delay 10-20%: Low risk (monitor only, notify business)
+- Delay 20-30%: Medium risk (notify + prepare backup list)
+- Delay 30-40%: High risk (notify + backup ready, require decision)
+- Delay >40%: Critical risk (auto-activate backup + escalate)
 
 Return ONLY valid JSON:
 {
@@ -275,7 +277,7 @@ Return ONLY valid JSON:
             properties: {
               risk_level: { 
                 type: "string",
-                enum: ["low", "medium", "high"]
+                enum: ["low", "medium", "high", "critical"]
               },
               delay_percentage: { type: "number" },
               predicted_issues: {

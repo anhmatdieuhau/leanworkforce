@@ -200,9 +200,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Import projects from Jira
   app.post("/api/jira/import-projects", async (req, res) => {
+    const businessUserId = req.body.businessUserId || "demo-business-user";
+    
     try {
-      const businessUserId = req.body.businessUserId || "demo-business-user";
-
       // Fetch all projects from Jira
       const jiraProjects = await fetchAllJiraProjects(businessUserId);
 
@@ -395,7 +395,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error importing Jira projects:", error);
-      res.status(500).json({ error: error.message });
+      
+      // Log the failed sync
+      await storage.createJiraSyncLog({
+        businessUserId,
+        syncType: 'import_projects',
+        status: 'failed',
+        error: error.message,
+        errorDetails: {
+          stack: error.stack,
+          statusCode: error?.response?.status
+        } as any,
+        canRetry: true,
+        startedAt: new Date(),
+        completedAt: new Date(),
+      });
+      
+      res.status(500).json({ 
+        error: error.message,
+        canRetry: true,
+        message: 'Jira import failed. You can retry from the dashboard.'
+      });
     }
   });
 
@@ -981,6 +1001,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const delays = await monitorProjectDelays(req.params.projectKey);
       res.json(delays);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get Jira sync logs for business user
+  app.get("/api/jira/sync-logs/:businessUserId", async (req, res) => {
+    try {
+      const { businessUserId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const logs = await storage.getJiraSyncLogs(businessUserId, limit);
+      res.json({ logs, count: logs.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get failed Jira syncs (for retry UI)
+  app.get("/api/jira/failed-syncs/:businessUserId", async (req, res) => {
+    try {
+      const { businessUserId } = req.params;
+      const failedLogs = await storage.getFailedJiraSyncLogs(businessUserId);
+      res.json({ logs: failedLogs, count: failedLogs.length });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

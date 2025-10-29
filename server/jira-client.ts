@@ -1,6 +1,7 @@
 // Jira client setup - Reference: jira blueprint
 import { Version3Client } from 'jira.js';
 import { storage } from './storage';
+import { safeDecrypt } from './encryption';
 
 let connectionSettings: any;
 
@@ -51,10 +52,13 @@ async function getManualCredentials(businessUserId: string = 'demo-business-user
     const settings = await storage.getJiraSettings(businessUserId);
     
     if (settings && settings.jiraDomain && settings.jiraEmail && settings.jiraApiToken && settings.isConfigured) {
+      // Decrypt API token before use
+      const decryptedToken = safeDecrypt(settings.jiraApiToken);
+      
       return {
         hostName: settings.jiraDomain.startsWith('https://') ? settings.jiraDomain : `https://${settings.jiraDomain}`,
         email: settings.jiraEmail,
-        apiToken: settings.jiraApiToken,
+        apiToken: decryptedToken,
         type: 'basic'
       };
     }

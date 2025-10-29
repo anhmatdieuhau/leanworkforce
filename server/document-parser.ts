@@ -1,8 +1,11 @@
 import { readFileSync } from "fs";
 import mammoth from "mammoth";
 
-// @ts-ignore - pdf-parse doesn't have proper TypeScript types
-const pdfParse = require("pdf-parse");
+// Dynamic import for pdf-parse since it doesn't have proper ESM support
+async function getPdfParser() {
+  const pdfParse = await import("pdf-parse");
+  return pdfParse.default || pdfParse;
+}
 
 export interface ParseResult {
   text: string;
@@ -18,6 +21,7 @@ async function extractPDFText(filePath: string, retries = 3): Promise<string> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const dataBuffer = readFileSync(filePath);
+      const pdfParse = await getPdfParser();
       const data = await pdfParse(dataBuffer);
       
       if (!data.text || data.text.trim().length === 0) {

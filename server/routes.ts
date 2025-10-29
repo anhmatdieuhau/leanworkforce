@@ -7,8 +7,26 @@ import { join } from "path";
 import { generateSkillMap, analyzeCVText, calculateFitScore, predictRisk } from "./gemini";
 import { syncJiraMilestones, getIssueProgress, monitorProjectDelays, fetchAllJiraProjects, fetchProjectSprints, fetchSprintIssues } from "./jira-service";
 import { insertProjectSchema, insertMilestoneSchema, insertCandidateSchema, insertFitScoreSchema, insertJiraSettingsSchema, type Milestone } from "@shared/schema";
+import { validateFileType } from "./document-parser";
+import { calculateFallbackFitScore, extractFallbackSkillMap } from "./fallback-scoring";
+import { encrypt, decrypt, safeEncrypt, safeDecrypt } from "./encryption";
+import { startJobWorker } from "./job-worker";
 
-const upload = multer({ dest: "uploads/" });
+// Configure multer to accept PDF, DOC, DOCX, TXT files
+const upload = multer({ 
+  dest: "uploads/",
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    const validation = validateFileType(file.originalname, file.mimetype);
+    if (!validation.valid) {
+      cb(new Error(validation.error || "Invalid file type"));
+    } else {
+      cb(null, true);
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ========== PROJECTS ==========
@@ -133,10 +151,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Save Jira settings
+  // Save Jira settings (with encryption for API token)
   app.post("/api/jira/settings", async (req, res) => {
     try {
       const validated = insertJiraSettingsSchema.parse(req.body);
+      
+      // Encrypt API token before saving
+      if (validated.jiraApiToken) {
+        validated.jiraApiToken = safeEncrypt(validated.jiraApiToken);
+      }
+      
       const settings = await storage.saveJiraSettings(validated);
       
       // Don't send API token in response
@@ -700,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload and analyze CV with AI and auto-match to projects
+  // Upload and analyze CV with AI and auto-match to projects (Background Job)
   app.post("/api/candidate/upload-cv", upload.single("cv"), async (req, res) => {
     try {
       if (!req.file) {
@@ -711,63 +735,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let candidate = await storage.getCandidateByEmail(email);
 
       if (!candidate) {
-        return res.status(404).json({ error: "Candidate not found" });
+        return res.status(404).json({ error: "Candidate not found. Please create profile first." });
       }
 
-      // For demo purposes, we'll read the file as text
-      const cvText = readFileSync(req.file.path, "utf-8");
-
-      // Analyze CV with Gemini AI
-      let cvAnalysis;
-      try {
-        cvAnalysis = await analyzeCVText(cvText);
-      } catch (error) {
-        console.error("AI CV analysis failed:", error);
-        return res.status(500).json({ error: "Failed to analyze CV with AI. Please check your Gemini API key." });
-      }
-
-      // Update candidate with analysis
+      // Update candidate with file path immediately
       candidate = await storage.updateCandidate(candidate.id, {
         cvFilePath: req.file.path,
-        cvAnalysis: cvAnalysis as any,
-        skills: cvAnalysis.skills,
-        experience: cvAnalysis.experience,
-        education: cvAnalysis.education,
-        name: cvAnalysis.name || candidate.name,
       });
 
-      // Auto-match candidate to all existing milestones
-      const projects = await storage.getAllProjects();
-      for (const project of projects) {
-        const milestones = await storage.getMilestonesByProject(project.id);
-        for (const milestone of milestones) {
-          if (milestone.skillMap && candidate!.skills && candidate!.skills.length > 0) {
-            try {
-              const fitAnalysis = await calculateFitScore(
-                candidate!.skills,
-                candidate!.experience || "",
-                milestone.skillMap as any
-              );
-
-              await storage.createFitScore({
-                candidateId: candidate!.id,
-                milestoneId: milestone.id,
-                score: Math.round(fitAnalysis.score),
-                skillOverlap: Math.round(fitAnalysis.skillOverlap),
-                experienceMatch: Math.round(fitAnalysis.experienceMatch),
-                softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
-                reasoning: fitAnalysis.reasoning,
-              });
-            } catch (error) {
-              console.error(`Failed to calculate fit score for milestone ${milestone.id}:`, error);
-            }
-          }
-        }
+      if (!candidate) {
+        return res.status(500).json({ error: "Failed to update candidate" });
       }
 
-      res.json({ success: true, candidate });
+      // Create background job for CV processing
+      const job = await storage.createJob({
+        jobType: "cv_processing",
+        userId: candidate.id,
+        userEmail: candidate.email,
+        status: "pending",
+        payload: {
+          candidateId: candidate.id,
+          filePath: req.file.path,
+          mimeType: req.file.mimetype,
+        } as any,
+        progress: 0,
+        maxAttempts: 3,
+      });
+
+      console.log(`✓ CV upload job ${job.id} created for candidate ${candidate.id}`);
+
+      // Return immediately - processing happens in background
+      res.json({ 
+        success: true, 
+        candidate,
+        jobId: job.id,
+        message: "CV uploaded successfully. Processing in background..."
+      });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("CV upload error:", error);
+      res.status(500).json({ 
+        error: "Failed to upload CV. Please try again.",
+        details: error.message 
+      });
     }
   });
 
@@ -1135,6 +1144,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Something went wrong. Please try again later." });
     }
   });
+
+  // ========== BACKGROUND JOBS ==========
+  
+  // Get job status
+  app.get("/api/jobs/:jobId", async (req, res) => {
+    try {
+      const job = await storage.getJob(req.params.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get user's jobs
+  app.get("/api/jobs/user/:userId", async (req, res) => {
+    try {
+      const jobs = await storage.getJobsByUser(req.params.userId);
+      res.json(jobs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Start background job worker
+  console.log('[Server] Starting background job worker...');
+  startJobWorker();
 
   const httpServer = createServer(app);
   return httpServer;

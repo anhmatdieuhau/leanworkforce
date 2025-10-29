@@ -2,9 +2,7 @@
 
 ## Overview
 
-Lean Workforce is an intelligent talent matching and project continuity platform powered by LeanfounderSpace that automates workforce allocation. The system connects businesses creating projects with milestones to candidates uploading CVs, using AI for skill extraction, candidate-project matching, and real-time risk prediction through Jira API integration.
-
-The platform operates as a dual-portal system with distinct Business and Candidate interfaces, featuring automated skill mapping, fit score calculation, and proactive project risk management.
+Lean Workforce is an intelligent talent matching and project continuity platform that automates workforce allocation. It connects businesses with projects to candidates, using AI for skill extraction, candidate-project matching, and real-time risk prediction via Jira integration. The platform features dual Business and Candidate portals, automated skill mapping, fit score calculation, and proactive project risk management.
 
 ## User Preferences
 
@@ -12,185 +10,70 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### Frontend
 
-**Technology Stack**: React with TypeScript, using Vite as the build tool and bundler.
+**Technology Stack**: React with TypeScript, Vite, shadcn/ui (Radix UI + Tailwind CSS).
 
-**UI Framework**: shadcn/ui component library built on Radix UI primitives, styled with Tailwind CSS following a minimalist monochrome design system.
+**Design Philosophy**: Workflow-first, minimalist monochrome design with functional color accents. Inter font family with clear typographic hierarchy.
 
-**Design Philosophy**: Workflow-first visualization with a system-based approach emphasizing data clarity over decorative elements. The interface uses a monochrome foundation (black, white, grays) with functional color accents only for status indicators and alerts. Typography uses Inter font family with a clear hierarchy from hero text (2.25rem) down to micro text (0.75rem).
+**State Management**: TanStack Query for server state and data fetching.
 
-**State Management**: TanStack Query (React Query) for server state management and data fetching, with a custom query client configured for API requests.
+**Routing**: Wouter for client-side routing, distinguishing `/business/*` and `/candidate/*` paths.
 
-**Routing**: Wouter for lightweight client-side routing with distinct paths for business portal (`/business/*`) and candidate portal (`/candidate/*`).
+**Key Features**:
+- **CV Upload**: Multi-stage visual feedback and progress tracking.
+- **Job Recommendations**: AI-powered matches (>70% fit score) with explainability (skill, experience, soft skill breakdown).
+- **Project Detail View**: Grouped task view (defaulting to sprint), milestone list timeline, Jira description parsing (ADF).
+- **Profile Management**: AI-extracted skills and experience displayed post-CV upload.
 
-**Key Pages**:
-- Landing page with workflow visualization
-- Business dashboard with project management and Jira import
-- Candidate dashboard with profile management and job recommendations
-  - **CV Upload Progress**: Multi-stage visual feedback (uploading → parsing → analyzing → complete) with progress bar
-  - **Job Recommendations**: AI-powered matches with >70% fit score, sorted by relevance
-  - **Explainability**: Collapsible "Why this job?" component showing fit score breakdown (Skills Match, Experience Level, Soft Skills percentages)
-  - **Job Actions**: Save for later, Skip (filters from future recommendations), Apply (one-click submission)
-  - **Stats Dashboard**: Real-time tracking of applications count, total matches, and average fit score
-- Project detail view with milestone tracking, candidate matching, and grouped task view
-  - **Default view**: Grouped by sprint (user preference)
-  - Timeline view for milestone list visualization
-  - Grouped view with epic/sprint organization (defaults to sprint grouping)
-  - Toggle between view modes and grouping options
-  - **Task Display**: Each task shows description (ADF-parsed to readable text) and "Original Estimate" from Jira
-- Profile creation/editing with CV upload and AI parsing
-  - **Form Repopulation**: Async data loading with loading guard prevents empty field flash
-  - **Email Field**: Read-only as it serves as account identifier in demo mode
-  - **CV Analysis Results**: AI-extracted skills and experience displayed after upload
+### Backend
 
-**Jira Description Parsing**: Frontend uses ADF (Atlassian Document Format) parser (`client/src/lib/adf-parser.ts`) to convert structured JSON descriptions from Jira into readable plain text with proper formatting (bullet points as •, paragraphs, etc.).
+**Runtime**: Node.js with Express.js, TypeScript, ES modules.
 
-### Backend Architecture
+**API Design**: RESTful API with endpoints for projects, milestones, candidates, fit scores, and Jira integration.
 
-**Runtime**: Node.js with Express.js server framework using TypeScript and ES modules.
+**File Upload**: Multer middleware for PDF, DOC, DOCX, TXT with validation and 10MB limit.
 
-**API Design**: RESTful API with endpoints organized by domain:
-- `/api/projects` - Project CRUD operations
-- `/api/milestones` - Milestone management
-- `/api/candidates` - Candidate profiles and CV uploads
-  - `GET /api/candidate/profile` - Get candidate profile
-  - `PUT /api/candidate/profile` - Update candidate profile (email is read-only)
-  - `POST /api/candidate/upload-cv` - Upload and analyze CV with multipart/form-data
-  - `GET /api/candidate/recommendations` - Get AI-powered job matches (>70% fit, filters skipped jobs)
-  - `POST /api/candidate/save-job` - Save job for later
-  - `POST /api/candidate/skip-job` - Skip job (removes from future recommendations)
-  - `POST /api/candidate/apply` - Submit job application
-  - `GET /api/candidate/stats` - Get applications count, matches, and average fit score
-- `/api/fit-scores` - AI-powered matching calculations
-- `/api/jira/*` - Jira integration endpoints including:
-  - `POST /api/jira/import-projects` - Import all Jira projects with automatic skill map generation and candidate matching
-  - `/api/jira/sync-milestones` - Sync issues from specific Jira project
-  - `/api/jira/monitor-delays` - Monitor project delays and risk levels
+**Document Processing**: Multi-format CV parser with retry logic and error recovery.
 
-**File Upload**: Multer middleware for handling CV file uploads to local filesystem (`uploads/` directory).
+**Background Job Queue**: Async processing for CV analysis, fit score calculation, and skill map generation, with progress tracking and email notifications (SendGrid).
 
-**AI Integration**: Google Gemini AI service layer (`server/gemini.ts`) providing:
-- Skill map generation from project descriptions
-- CV text analysis and skill extraction
-- Candidate fit score calculation with multi-factor analysis
-- Risk prediction for milestone delays
+**AI Integration**: Google Gemini for skill mapping, CV analysis, fit score calculation, and risk prediction.
 
-**Storage Layer**: Abstracted storage interface (`IStorage`) with database implementation supporting CRUD operations for all entities. Database queries use Drizzle ORM with relationship mapping.
+**Storage Layer**: Abstracted interface using Drizzle ORM with PostgreSQL.
 
-**Development Environment**: Vite dev server with HMR, runtime error overlay, and Replit-specific plugins for development tooling and banner display.
+### Data Storage
 
-### Data Storage Solutions
+**Database**: PostgreSQL via Neon serverless driver.
 
-**Database**: PostgreSQL via Neon serverless driver with WebSocket support for connection pooling.
+**ORM**: Drizzle ORM for type-safe operations.
 
-**ORM**: Drizzle ORM configured with schema-first approach. Schema definitions in `shared/schema.ts` enable type-safe database operations with automatic TypeScript inference.
+**Schema Design**: Tables for `projects`, `milestones`, `candidates`, `fitScores`, `riskAlerts`, `savedJobs`, `applications`, and `candidateActions`.
 
-**Schema Design**:
-- **projects**: Core project entities with business user ownership, Jira integration key, and status tracking
-- **milestones**: Project breakdown with skill maps (JSONB), assigned candidates, risk levels, Jira issue keys, epic keys, sprint IDs, and sprint names for organizational grouping
-- **candidates**: User profiles with skills arrays, availability windows, CV text storage, and AI-parsed metadata
-- **fitScores**: Calculated matching scores linking candidates to milestones with detailed breakdown (skillOverlap, experienceMatch, softSkillRelevance)
-- **riskAlerts**: Automated alerts for milestone delays with AI-generated recommendations and backup candidate suggestions
-- **savedJobs**: Candidate-saved job opportunities (candidateId, milestoneId, timestamps)
-- **applications**: Job applications submitted by candidates (candidateId, milestoneId, projectId, status, timestamps)
-- **candidateActions**: Tracking system for all candidate interactions (save, skip, view actions)
+**Relationships**: One-to-many between projects and milestones; implicit many-to-many between candidates and milestones.
 
-**Relationships**: One-to-many between projects and milestones; many-to-many implicit relationship between candidates and milestones via fit scores.
-
-**Migrations**: Drizzle Kit manages schema migrations in `migrations/` directory with push-based deployment strategy.
+**Migrations**: Drizzle Kit for schema management.
 
 ### Authentication and Authorization
 
-**Current State**: Magic Link authentication system implemented for passwordless login.
+**Authentication**: Magic Link system with 10-minute TTL, single-use tokens, and rate limiting. Automatically detects user roles and creates shadow accounts for new candidates.
 
-**Magic Link Authentication**:
-- **Token Generation**: Cryptographically secure 32-character base64url tokens
-- **Expiry**: 10-minute TTL (time-to-live) for security
-- **Single-Use**: Tokens marked as used after verification
-- **Rate Limiting**: Maximum 5 requests per hour per email address
-- **Database Table**: `magicLinks` stores token, email, expiry, IP address, user agent
-- **API Endpoints**: 
-  - `POST /api/auth/request-magic-link` - Request login link
-  - `GET /api/auth/verify-magic-link` - Verify token and create session
-- **Role Detection**: Automatically determines candidate vs business user role
-- **Shadow Accounts**: Creates candidate account on first login if email not registered
+**Session Management**: Client-side localStorage for user data (future plans for server-side tokens).
 
-**Session Management**: 
-- **Current**: Simple localStorage-based session (client-side user data storage)
-- **Email Delivery**: Mock implementation (console.log in development)
+**Authentication Guards**: Role-based access control for business and candidate routes; public access for guest CV upload.
 
-**Authentication Guards**:
-- **Business Routes**: `/business`, `/business/projects/*` require business role authentication
-- **Candidate Routes**: `/candidate/dashboard`, `/candidate/profile` require any authenticated user
-- **Public Route**: `/candidate` (CV upload) accessible without login for guest candidates
-- **ProtectedRoute Component**: Automatic redirect to `/login` for unauthorized access
-- **Role-Based Routing**: Business users → `/business`, Candidates → `/candidate/dashboard`
+## External Dependencies
 
-**Email Delivery**: SendGrid integration via Replit connector for real email delivery in production. Falls back to console logging if SendGrid fails.
+**Google Gemini AI**: Primary AI service for NLP tasks (skill extraction, matching, risk analysis). Rate-limited with retries.
 
-**Production Considerations** (not yet implemented):
-- Server-side session tokens with httpOnly cookies for security (currently uses localStorage)
-- Business user pre-registration system (currently detected via project ownership)
-- Enhanced email validation with Zod schema enforcement
-- Transactional guarantees for magic link lifecycle
-- CSRF protection and secure session handling
-- Business users without projects default to candidate role - consider explicit business user registration table
-
-### External Dependencies
-
-**Google Gemini AI**: Primary AI service for natural language processing tasks including skill extraction, semantic matching, and risk analysis. Configured via `@google/genai` SDK with API key authentication.
-
-**Rate Limiting**: All Gemini AI functions protected by rate limiter (`server/rate-limiter.ts`) with 30-second delays and 3 retry attempts to respect free tier quota (2 requests/min). Applied to:
-- `generateSkillMap()` - Skill extraction from project descriptions
-- `analyzeCVText()` - CV parsing and candidate profile extraction
-- `calculateFitScore()` - Multi-factor candidate-project matching (skill overlap, experience match, soft skill relevance)
-- `predictRisk()` - Risk prediction for milestone delays
-
-**Data Validation**: All AI-generated fit scores (skillOverlap, experienceMatch, softSkillRelevance) are rounded to integers using `Math.round()` before database insertion to ensure type compatibility with PostgreSQL integer columns.
-
-**Jira Cloud API**: Integration via `jira.js` Version3Client with dual authentication approach:
-
-**Authentication Methods**:
-- **Primary**: Replit OAuth Connector - Seamless OAuth flow managed by Replit platform
-- **Fallback**: Manual Credentials - Business users can configure custom Jira domain, email, and API token via settings dialog
-
-**Jira Settings Management**:
-- Database table `jiraSettings` stores per-business-user configuration (domain, email, encrypted API token, connection type)
-- Settings dialog accessible via header button in Business Dashboard (`JiraSettingsDialog.tsx`)
-- API token preservation: Updates to domain/email don't require re-entering API token - existing token automatically preserved
-- businessUserId parameter threaded through all Jira service functions to fetch correct credentials per user
+**Jira Cloud API**: Integration via `jira.js` with dual authentication (Replit OAuth Connector or manual credentials).
 
 **Jira Integration Features**:
-- **Project Import**: One-click import of all Jira projects from connected workspace (`fetchAllJiraProjects`)
-- **Issue Synchronization**: All non-Epic issues imported as milestones with AI skill map generation using enhanced JQL search API (`syncJiraMilestones`)
-- **Task Filtering**: Automatically excludes Epic-type issues, imports Stories, Tasks, and Bugs
-- **Epic & Sprint Tracking**: Captures epic keys and sprint IDs/names for task organization
-- **Progress Monitoring**: Real-time delay detection using time tracking data (`getIssueProgress`)
-- **Risk Management**: Automated risk level calculation and backup candidate activation (`monitorProjectDelays`)
-- **API Migration**: Uses new enhanced JQL search endpoint (`/rest/api/3/search/jql`) with cursor-based pagination to comply with Atlassian's API deprecation (October 2024)
+- Project import and issue synchronization (non-Epic issues as milestones).
+- Epic & Sprint tracking for task organization.
+- Progress monitoring and risk management.
+- Uses enhanced JQL search API for issue fetching.
 
-**Client Management**: OAuth tokens require dynamic refresh on each client instantiation (clients never cached). Manual credentials fetched from database per businessUserId. Client automatically selects OAuth connector or manual credentials based on availability.
+**Database**: Neon PostgreSQL serverless database.
 
-**Import Workflow**: 
-1. User clicks "Import from Jira" button on Business Dashboard
-2. System fetches all accessible Jira projects via API
-3. For each project:
-   - If project already exists in database: Re-syncs all issues/milestones with latest Jira data
-   - If project is new: Creates database record
-   - Fetches all non-Epic issues (Stories, Tasks, Bugs) from the project
-   - Each issue becomes a milestone:
-     - Uses issue summary as milestone name
-     - Preserves full issue description
-     - Converts time estimates from seconds to hours
-     - Generates AI skill map from issue summary and description
-     - Updates existing milestones (matched by name) or creates new ones
-   - Fetches up to 1000 most recent issues per project
-4. Auto-matches candidates to milestones using fit score calculation (updates existing or creates new)
-5. Dashboard refreshes with imported/updated projects
-
-**Database**: Neon PostgreSQL serverless database accessed via connection string environment variable. WebSocket constructor override enables serverless compatibility.
-
-**Third-party UI Libraries**: Extensive use of Radix UI primitives (@radix-ui/*) for accessible, unstyled components. Additional dependencies include react-hook-form with Zod validation, date-fns for date handling, and class-variance-authority for component variants.
-
-**Development Tools**: TypeScript for type safety, ESBuild for server bundling, PostCSS with Autoprefixer for CSS processing.
+**Third-party UI Libraries**: Radix UI primitives, react-hook-form (Zod validation), date-fns.

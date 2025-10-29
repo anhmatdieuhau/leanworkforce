@@ -77,3 +77,44 @@ Preferred communication style: Simple, everyday language.
 **Database**: Neon PostgreSQL serverless database.
 
 **Third-party UI Libraries**: Radix UI primitives, react-hook-form (Zod validation), date-fns.
+
+## Recent Production Enhancements (P0/P1 Features)
+
+### P0: Critical Production Features
+
+**Jira Sync Error Handling** (October 2025):
+- Added `jiraSyncLogs` table to track all Jira synchronization attempts with full error details and retry capability.
+- Added sync status tracking fields to projects: `lastJiraSyncAt`, `lastJiraSyncStatus`, `lastJiraSyncError`.
+- Created `jira-error-handler.ts` utility for error categorization (auth, network, rate-limit, validation).
+- Added API endpoints: `/api/jira/sync-logs` (all logs) and `/api/jira/failed-syncs` (failed only).
+- Storage methods: `createJiraSyncLog`, `getJiraSyncLogsByProject`, `getAllJiraSyncLogs`.
+
+**Encryption Key Production Requirement** (October 2025):
+- `ENCRYPTION_KEY` now mandatory in production environments (fails hard on startup if missing).
+- Development mode allows temporary key with console warning for developer convenience.
+- Prevents production deployments without proper encryption security.
+
+**Candidate Double-Booking Prevention** (October 2025):
+- Added assignment lifecycle fields to milestones: `assignmentStatus`, `assignmentConfirmedAt`, `backupAssignmentStatus`.
+- Created `assignment-validator.ts` utility with validation functions:
+  - `validateCandidateAssignment`: Prevents assigning candidates to overlapping projects.
+  - `validateBackupAssignment`: Ensures backups don't conflict with primary assignments.
+  - `confirmCandidateAssignment`: Marks assignment as confirmed (locks it in).
+  - `rejectCandidateAssignment`: Frees up candidate for other opportunities.
+- **Integration pending**: Validator functions created but not yet wired into assignment API endpoints.
+
+### P1: High Priority Features
+
+**Application Status Workflow** (October 2025):
+- Leverages existing `applications` table with comprehensive status tracking.
+- Status values: pending, under_review, interview_scheduled, accepted, rejected, withdrawn.
+- Business can track candidate application lifecycle through existing infrastructure.
+
+**4-Tier Risk Escalation System** (October 2025):
+- Updated AI risk analysis from 3-tier to 4-tier escalation:
+  - **Low** (10-20% delay): Monitor only, notify business.
+  - **Medium** (20-30% delay): Notify + prepare backup candidate list.
+  - **High** (30-40% delay): Notify + backup ready, require business decision within 24h.
+  - **Critical** (>40% delay): Auto-activate backup + escalate to management.
+- Updated `RiskAnalysis` type and Gemini AI prompt to support all four tiers.
+- **Integration pending**: Downstream logic in `monitorProjectDelays` needs updates to implement tier-specific escalation behaviors.

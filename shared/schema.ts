@@ -48,8 +48,10 @@ export const milestones = pgTable("milestones", {
   jiraSprintId: text("jira_sprint_id"),
   jiraSprintName: text("jira_sprint_name"),
   delayPercentage: integer("delay_percentage").default(0),
-  riskLevel: text("risk_level"), // low, medium, high
+  riskLevel: text("risk_level"), // low, medium, high, critical
   skillMap: jsonb("skill_map"), // AI-generated skill requirements
+  skillMapApproved: boolean("skill_map_approved").default(false), // Business approved skill map
+  candidatesNotified: boolean("candidates_notified").default(false), // Candidates have been notified
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

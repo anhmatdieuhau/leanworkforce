@@ -64,8 +64,15 @@ Preferred communication style: Simple, everyday language.
 - Architecture: One account = One role (no dual-role users)
 - New users are assigned role based on which login portal they use
 - Backend respects `requestedRole` parameter for new user creation
+- Auto-redirect: Logged-in users cannot access login pages (auto-redirected to dashboard)
 
-**Session Management**: Client-side localStorage for user data (future plans for server-side tokens).
+**Session Management** (October 2025):
+- Server-side sessions stored in PostgreSQL via `express-session` + `connect-pg-simple`
+- HttpOnly cookies with 7-day expiration for security
+- Session data: `userId`, `email`, `role`
+- Middleware protection: `requireAuth`, `requireBusiness`, `requireCandidate`
+- API endpoints: `GET /api/auth/session`, `POST /api/auth/logout`
+- Frontend: `useAuth()` hook with TanStack Query for session state
 
 **Authentication Guards**: Role-based access control for business and candidate routes; public access for guest CV upload.
 

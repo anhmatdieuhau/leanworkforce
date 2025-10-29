@@ -56,7 +56,14 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 
-**Authentication**: Magic Link system with 10-minute TTL, single-use tokens, and rate limiting. Automatically detects user roles and creates shadow accounts for new candidates.
+**Authentication**: Magic Link passwordless system with 10-minute TTL, single-use tokens, and rate limiting.
+
+**Separate Login Portals** (October 2025):
+- `/business-login` - Business user login with `requestedRole='business'`
+- `/candidate-login` - Candidate user login with `requestedRole='candidate'`
+- Architecture: One account = One role (no dual-role users)
+- New users are assigned role based on which login portal they use
+- Backend respects `requestedRole` parameter for new user creation
 
 **Session Management**: Client-side localStorage for user data (future plans for server-side tokens).
 

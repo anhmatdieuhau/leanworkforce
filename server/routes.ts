@@ -1213,9 +1213,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId = candidate.id;
         console.log(`⚠️ Dual-role user, defaulting to candidate`);
       } else {
-        // New user - default to candidate (shadow account will be created)
-        role = "candidate";
-        console.log(`🆕 New user, defaulting to candidate`);
+        // New user - use requested role
+        if (requestedRole === "business") {
+          role = "business";
+          userId = emailLower;
+          console.log(`🆕 New business user with requested role: business`);
+        } else {
+          role = "candidate";
+          console.log(`🆕 New candidate user (shadow account will be created)`);
+        }
       }
 
       // Generate cryptographically secure token

@@ -12,6 +12,8 @@ import CreateProject from "@/pages/CreateProject";
 import ProjectDetail from "@/pages/ProjectDetail";
 import CandidateProfile from "@/pages/CandidateProfile";
 import Login from "@/pages/Login";
+import BusinessLogin from "@/pages/BusinessLogin";
+import CandidateLogin from "@/pages/CandidateLogin";
 import VerifyMagicLink from "@/pages/VerifyMagicLink";
 import CandidateUpload from "@/pages/CandidateUpload";
 import CandidateLanding from "@/pages/CandidateLanding";
@@ -21,6 +23,8 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/login" component={Login} />
+      <Route path="/business-login" component={BusinessLogin} />
+      <Route path="/candidate-login" component={CandidateLogin} />
       <Route path="/auth/verify" component={VerifyMagicLink} />
       
       {/* Business routes - require authentication */}

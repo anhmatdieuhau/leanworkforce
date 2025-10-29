@@ -76,10 +76,17 @@ export default function LandingPage() {
             </div>
             <div className="flex gap-3">
               <Button 
-                onClick={() => setLocation("/login")}
-                data-testid="button-login"
+                variant="outline"
+                onClick={() => setLocation("/business-login")}
+                data-testid="button-login-business"
               >
-                Login
+                Business Login
+              </Button>
+              <Button 
+                onClick={() => setLocation("/candidate-login")}
+                data-testid="button-login-candidate"
+              >
+                Candidate Login
               </Button>
             </div>
           </div>
@@ -109,7 +116,7 @@ export default function LandingPage() {
               <Button 
                 size="lg" 
                 className="group"
-                onClick={() => setLocation("/business")}
+                onClick={() => setLocation("/business-login")}
                 data-testid="button-hero-business"
               >
                 Start as Business
@@ -118,7 +125,7 @@ export default function LandingPage() {
               <Button 
                 size="lg" 
                 variant="outline"
-                onClick={() => setLocation("/candidate")}
+                onClick={() => setLocation("/candidate-login")}
                 data-testid="button-hero-candidate"
               >
                 Join as Candidate
@@ -220,7 +227,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-8">
             <Card 
               className="hover-elevate transition-all duration-150 cursor-pointer border-2" 
-              onClick={() => setLocation("/business")} 
+              onClick={() => setLocation("/business-login")} 
               data-testid="card-business"
             >
               <CardContent className="p-10">
@@ -262,7 +269,7 @@ export default function LandingPage() {
 
             <Card 
               className="hover-elevate transition-all duration-150 cursor-pointer border-2" 
-              onClick={() => setLocation("/candidate")} 
+              onClick={() => setLocation("/candidate-login")} 
               data-testid="card-candidate"
             >
               <CardContent className="p-10">
@@ -356,18 +363,18 @@ export default function LandingPage() {
               <ul className="space-y-3 text-sm">
                 <li>
                   <button 
-                    onClick={() => setLocation("/business")}
+                    onClick={() => setLocation("/business-login")}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Business Portal
+                    Business Login
                   </button>
                 </li>
                 <li>
                   <button 
-                    onClick={() => setLocation("/candidate")}
+                    onClick={() => setLocation("/candidate-login")}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Candidate Portal
+                    Candidate Login
                   </button>
                 </li>
                 <li>

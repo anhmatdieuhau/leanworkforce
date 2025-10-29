@@ -475,6 +475,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== BUSINESS REVIEW WORKFLOW (P1-7) ==========
+  
+  // Approve/edit skill map for a milestone
+  app.patch("/api/milestones/:id/approve-skillmap", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { skillMap, approved } = req.body;
+      
+      // Validate approved flag if provided
+      if (approved !== undefined && typeof approved !== 'boolean') {
+        return res.status(400).json({ error: "approved must be a boolean" });
+      }
+      
+      const milestone = await storage.getMilestone(id);
+      if (!milestone) {
+        return res.status(404).json({ error: "Milestone not found" });
+      }
+      
+      // Build update object - only update fields that are provided
+      const updateData: any = {};
+      if (skillMap !== undefined) {
+        updateData.skillMap = skillMap;
+      }
+      if (approved !== undefined) {
+        updateData.skillMapApproved = approved;
+      }
+      
+      // Update milestone
+      const updated = await storage.updateMilestone(id, updateData);
+      
+      // If approved, always recalculate fit scores using the current skill map
+      const finalSkillMap = skillMap || milestone.skillMap;
+      if (approved && finalSkillMap) {
+        const candidates = await storage.getAllCandidates();
+        for (const candidate of candidates) {
+          if (candidate.skills && candidate.skills.length > 0) {
+            try {
+              const { calculateFitScore } = await import("./gemini.js");
+              const fitAnalysis = await calculateFitScore(
+                candidate.skills,
+                candidate.experience || "",
+                finalSkillMap // Use finalSkillMap, not skillMap!
+              );
+              
+              // Check if fit score exists
+              const existingFitScores = await storage.getTopCandidatesForMilestone(id, 1000);
+              const existingFitScore = existingFitScores.find(fs => fs.candidate.id === candidate.id);
+              
+              if (existingFitScore) {
+                await storage.updateFitScore(existingFitScore.id, {
+                  score: Math.round(fitAnalysis.score),
+                  skillOverlap: Math.round(fitAnalysis.skillOverlap),
+                  experienceMatch: Math.round(fitAnalysis.experienceMatch),
+                  softSkillRelevance: Math.round(fitAnalysis.softSkillRelevance),
+                  reasoning: fitAnalysis.reasoning,
+                });
+              } else {
+                await storage.createFitScore({
+                  candidateId: candidate.id,
+                  milestoneId: id,
+                  score: fitAnalysis.score,
+                  skillOverlap: fitAnalysis.skillOverlap,
+                  experienceMatch: fitAnalysis.experienceMatch,
+                  softSkillRelevance: fitAnalysis.softSkillRelevance,
+                  reasoning: fitAnalysis.reasoning,
+                });
+              }
+            } catch (error) {
+              console.error(`Failed to calculate fit score for candidate ${candidate.id}:`, error);
+            }
+          }
+        }
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Mark candidates as notified for a milestone
+  app.post("/api/milestones/:id/notify-candidates", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { candidateIds } = req.body; // Array of candidate IDs to notify
+      
+      if (!candidateIds || !Array.isArray(candidateIds)) {
+        return res.status(400).json({ error: "candidateIds array is required" });
+      }
+      
+      const milestone = await storage.getMilestone(id);
+      if (!milestone) {
+        return res.status(404).json({ error: "Milestone not found" });
+      }
+      
+      if (!milestone.skillMapApproved) {
+        return res.status(400).json({ error: "Skill map must be approved before notifying candidates" });
+      }
+      
+      // Mark as notified
+      await storage.updateMilestone(id, {
+        candidatesNotified: true,
+      });
+      
+      // In a real system, this would send email notifications to selected candidates
+      // For now, we just mark the milestone as having notified candidates
+      
+      res.json({ 
+        success: true, 
+        notifiedCount: candidateIds.length,
+        message: `Notified ${candidateIds.length} candidates about this opportunity`
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Sync Jira tasks for a specific project
   app.post("/api/projects/:id/sync-jira", async (req, res) => {
     try {

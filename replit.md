@@ -118,3 +118,21 @@ Preferred communication style: Simple, everyday language.
   - **Critical** (>40% delay): Auto-activate backup + escalate to management.
 - Updated `RiskAnalysis` type and Gemini AI prompt to support all four tiers.
 - **Integration pending**: Downstream logic in `monitorProjectDelays` needs updates to implement tier-specific escalation behaviors.
+
+**Multi-Business Competition** (October 2025):
+- Added `businessInterests` table to track multiple businesses competing for same candidate.
+- Priority scoring algorithm: 40% fit score + 30% budget + 30% candidate preference.
+- Normalizes budgets across competing offers for fair comparison.
+- API endpoints for creating interests, adjusting offers, rating opportunities, viewing top 3.
+- **UI pending**: Candidate dashboard integration to display competing offers.
+
+**Business Review Workflow** (October 2025):
+- Added human-in-the-loop validation to prevent spam notifications.
+- Schema: `skillMapApproved` and `candidatesNotified` flags on milestones.
+- Workflow enforces:
+  1. Business reviews/edits AI-generated skill map → Approve
+  2. System recalculates fit scores with approved skill map
+  3. Business reviews top candidates → Selects who to notify
+  4. Notification requires both skill map approval and candidate selection
+- API endpoints: PATCH `/api/milestones/:id/approve-skillmap`, POST `/api/milestones/:id/notify-candidates`.
+- **UI pending**: Business dashboard integration for skill map review and candidate selection.

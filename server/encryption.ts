@@ -5,15 +5,38 @@ import crypto from "crypto";
  * Uses AES-256-GCM encryption
  */
 
-// Get encryption key from environment or generate one
-// In production, this should be stored in a secure vault
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || generateDefaultKey();
-
-function generateDefaultKey(): string {
-  // For development only - in production this must come from secure vault
-  console.warn('[Security Warning] Using generated encryption key. Set ENCRYPTION_KEY in production!');
-  return crypto.randomBytes(32).toString('hex');
+/**
+ * Get encryption key from environment variable
+ * CRITICAL: Must be set to a stable 32-byte hex string to prevent data corruption
+ * Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ */
+function getEncryptionKey(): string {
+  const key = process.env.ENCRYPTION_KEY;
+  
+  if (!key) {
+    throw new Error(
+      '\n❌ ENCRYPTION_KEY environment variable is required!\n' +
+      '   Without a persistent encryption key, Jira API tokens will be corrupted on restart.\n\n' +
+      '   Generate a secure key:\n' +
+      '   node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"\n\n' +
+      '   Then add to Secrets:\n' +
+      '   ENCRYPTION_KEY=<your-generated-key>\n'
+    );
+  }
+  
+  // Validate key length
+  const keyBuffer = Buffer.from(key, 'hex');
+  if (keyBuffer.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be exactly 32 bytes (64 hex characters). ` +
+      `Current length: ${keyBuffer.length} bytes`
+    );
+  }
+  
+  return key;
 }
+
+const ENCRYPTION_KEY = getEncryptionKey();
 
 /**
  * Encrypt sensitive data using AES-256-GCM

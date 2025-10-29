@@ -416,3 +416,12 @@ export const insertJiraSyncLogSchema = createInsertSchema(jiraSyncLogs).omit({
 
 export type InsertJiraSyncLog = z.infer<typeof insertJiraSyncLogSchema>;
 export type JiraSyncLog = typeof jiraSyncLogs.$inferSelect;
+
+// ========== SESSIONS (Express Session Store) ==========
+export const sessions = pgTable("sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
+export type Session = typeof sessions.$inferSelect;

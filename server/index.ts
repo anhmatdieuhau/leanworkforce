@@ -1,7 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { sql } from "drizzle-orm";
+import { Pool } from "@neondatabase/serverless";
 
 const app = express();
 app.use(express.json());
@@ -56,6 +59,35 @@ app.use((req, res, next) => {
     } catch (dbError: any) {
       throw new Error(`Database connection failed: ${dbError.message}. Please check your DATABASE_URL configuration.`);
     }
+
+    // Configure session store
+    const PgSession = connectPgSimple(session);
+    const sessionPool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+    const sessionSecret = process.env.SESSION_SECRET;
+    if (!sessionSecret) {
+      throw new Error("SESSION_SECRET environment variable is required.");
+    }
+
+    app.use(
+      session({
+        store: new PgSession({
+          pool: sessionPool,
+          tableName: "sessions",
+          createTableIfMissing: false,
+        }),
+        secret: sessionSecret,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        },
+      })
+    );
+    log("Session middleware configured");
 
     const server = await registerRoutes(app);
 

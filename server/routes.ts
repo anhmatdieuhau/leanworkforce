@@ -1297,9 +1297,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.markMagicLinkAsUsed(token);
 
       // Get or create user account
-      let user;
+      let userId: string;
       if (magicLink.role === "candidate") {
-        user = await storage.getCandidateByEmail(magicLink.email);
+        let user = await storage.getCandidateByEmail(magicLink.email);
         
         // Create shadow account if doesn't exist
         if (!user) {
@@ -1308,25 +1308,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: magicLink.email.split("@")[0], // Default name from email
           });
         }
+        userId = user.id;
       } else {
-        // Business user logic (simplified for now)
-        user = { email: magicLink.email, role: "business" };
+        // Business user - use email as userId
+        userId = magicLink.email;
       }
 
-      // Create session (for now, just return user data - you can implement express-session later)
+      // Create server-side session
+      req.session.userId = userId;
+      req.session.email = magicLink.email;
+      req.session.role = magicLink.role as "business" | "candidate";
+
+      console.log(`✅ Session created for ${magicLink.email} (role: ${magicLink.role})`);
+
       res.json({
         success: true,
         user: {
-          id: user.id || "business-user",
+          id: userId,
           email: magicLink.email,
           role: magicLink.role,
-          name: user.name || magicLink.email.split("@")[0],
         },
         redirectTo: magicLink.role === "business" ? "/business" : "/candidate/dashboard",
       });
     } catch (error: any) {
       console.error("Error verifying magic link:", error);
       res.status(500).json({ error: "Something went wrong. Please try again later." });
+    }
+  });
+
+  // Get current session
+  app.get("/api/auth/session", async (req, res) => {
+    try {
+      if (!req.session.userId || !req.session.email || !req.session.role) {
+        return res.json({ user: null });
+      }
+
+      res.json({
+        user: {
+          id: req.session.userId,
+          email: req.session.email,
+          role: req.session.role,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching session:", error);
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
+  // Logout (destroy session)
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      const userEmail = req.session.email;
+      
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Error destroying session:", err);
+          return res.status(500).json({ error: "Failed to logout" });
+        }
+
+        res.clearCookie("connect.sid");
+        console.log(`✅ Session destroyed for ${userEmail}`);
+        res.json({ success: true, message: "Logged out successfully" });
+      });
+    } catch (error: any) {
+      console.error("Error logging out:", error);
+      res.status(500).json({ error: "Failed to logout" });
     }
   });
 

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { isAuthenticated, isBusinessUser } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,24 +10,33 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireBusiness = false }: ProtectedRouteProps) {
   const [, setLocation] = useLocation();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      setLocation("/login");
+    if (!isLoading && !user) {
+      setLocation("/");
       return;
     }
 
-    if (requireBusiness && !isBusinessUser()) {
+    if (!isLoading && requireBusiness && user?.role !== "business") {
       setLocation("/candidate/dashboard");
       return;
     }
-  }, [setLocation, requireBusiness]);
+  }, [user, isLoading, setLocation, requireBusiness]);
 
-  if (!isAuthenticated()) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
     return null;
   }
 
-  if (requireBusiness && !isBusinessUser()) {
+  if (requireBusiness && user.role !== "business") {
     return null;
   }
 

@@ -3,10 +3,11 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { setUser } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function VerifyMagicLink() {
   const [, setLocation] = useLocation();
+  const { refetch } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState("");
   const [redirectPath, setRedirectPath] = useState("");
@@ -24,15 +25,17 @@ export default function VerifyMagicLink() {
       }
 
       try {
-        const response = await fetch(`/api/auth/verify-magic-link?token=${token}`);
+        const response = await fetch(`/api/auth/verify-magic-link?token=${token}`, {
+          credentials: "include",
+        });
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(data.error || "Verification failed");
         }
 
-        // Success! Store user session
-        setUser(data.user);
+        // Success! Session created on server, refetch to update client
+        await refetch();
         
         setStatus("success");
         setRedirectPath(data.redirectTo);
@@ -48,7 +51,7 @@ export default function VerifyMagicLink() {
     };
 
     verifyToken();
-  }, [setLocation]);
+  }, [setLocation, refetch]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

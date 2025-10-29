@@ -1,38 +1,57 @@
+import { apiRequest } from "./queryClient";
+
 interface User {
   id: string;
   email: string;
   role: 'candidate' | 'business';
-  name?: string;
 }
 
-export function getUser(): User | null {
-  const userStr = localStorage.getItem('user');
-  if (!userStr) return null;
+let cachedUser: User | null | undefined = undefined;
+
+export async function fetchSession(): Promise<User | null> {
   try {
-    return JSON.parse(userStr);
-  } catch {
+    const response = await fetch("/api/auth/session", {
+      credentials: "include",
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    cachedUser = data.user || null;
+    return cachedUser ?? null;
+  } catch (error) {
+    console.error("Failed to fetch session:", error);
     return null;
   }
 }
 
-export function setUser(user: User): void {
-  localStorage.setItem('user', JSON.stringify(user));
+export function getCachedUser(): User | null | undefined {
+  return cachedUser;
 }
 
-export function clearUser(): void {
-  localStorage.removeItem('user');
+export async function logout(): Promise<void> {
+  try {
+    await apiRequest("POST", "/api/auth/logout");
+    cachedUser = null;
+  } catch (error) {
+    console.error("Logout failed:", error);
+    throw error;
+  }
 }
 
-export function isAuthenticated(): boolean {
-  return getUser() !== null;
+export async function isAuthenticated(): Promise<boolean> {
+  const user = await fetchSession();
+  return user !== null;
 }
 
-export function isBusinessUser(): boolean {
-  const user = getUser();
+export async function isBusinessUser(): Promise<boolean> {
+  const user = await fetchSession();
   return user?.role === 'business';
 }
 
-export function isCandidateUser(): boolean {
-  const user = getUser();
+export async function isCandidateUser(): Promise<boolean> {
+  const user = await fetchSession();
   return user?.role === 'candidate';
 }

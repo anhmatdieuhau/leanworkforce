@@ -315,3 +315,29 @@ export const insertMagicLinkSchema = createInsertSchema(magicLinks).omit({
 
 export type InsertMagicLink = z.infer<typeof insertMagicLinkSchema>;
 export type MagicLink = typeof magicLinks.$inferSelect;
+
+// ========== BACKGROUND JOBS ==========
+export const backgroundJobs = pgTable("background_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobType: text("job_type").notNull(), // cv_processing, fit_score_calculation, jira_sync
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  userId: varchar("user_id").notNull(), // candidate or business user id
+  userEmail: text("user_email"), // for email notifications
+  payload: jsonb("payload"), // job-specific data
+  result: jsonb("result"), // job output
+  error: text("error"), // error message if failed
+  progress: integer("progress").default(0), // 0-100
+  attempts: integer("attempts").default(0),
+  maxAttempts: integer("max_attempts").default(3),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertBackgroundJobSchema = createInsertSchema(backgroundJobs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBackgroundJob = z.infer<typeof insertBackgroundJobSchema>;
+export type BackgroundJob = typeof backgroundJobs.$inferSelect;

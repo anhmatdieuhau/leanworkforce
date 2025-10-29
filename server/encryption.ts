@@ -1,0 +1,114 @@
+import crypto from "crypto";
+
+/**
+ * Encryption Service for Sensitive Data (Jira API Tokens)
+ * Uses AES-256-GCM encryption
+ */
+
+// Get encryption key from environment or generate one
+// In production, this should be stored in a secure vault
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || generateDefaultKey();
+
+function generateDefaultKey(): string {
+  // For development only - in production this must come from secure vault
+  console.warn('[Security Warning] Using generated encryption key. Set ENCRYPTION_KEY in production!');
+  return crypto.randomBytes(32).toString('hex');
+}
+
+/**
+ * Encrypt sensitive data using AES-256-GCM
+ */
+export function encrypt(plaintext: string): string {
+  try {
+    // Generate random initialization vector
+    const iv = crypto.randomBytes(16);
+    
+    // Create cipher
+    const key = Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex');
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    
+    // Encrypt data
+    let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    // Get authentication tag
+    const authTag = cipher.getAuthTag();
+    
+    // Combine iv + authTag + encrypted data
+    // Format: iv(32 chars) + authTag(32 chars) + encrypted
+    return iv.toString('hex') + authTag.toString('hex') + encrypted;
+  } catch (error: any) {
+    console.error('[Encryption Error]', error.message);
+    throw new Error('Failed to encrypt data');
+  }
+}
+
+/**
+ * Decrypt sensitive data using AES-256-GCM
+ */
+export function decrypt(ciphertext: string): string {
+  try {
+    // Extract iv, authTag, and encrypted data
+    const iv = Buffer.from(ciphertext.slice(0, 32), 'hex');
+    const authTag = Buffer.from(ciphertext.slice(32, 64), 'hex');
+    const encrypted = ciphertext.slice(64);
+    
+    // Create decipher
+    const key = Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    
+    // Decrypt data
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (error: any) {
+    console.error('[Decryption Error]', error.message);
+    throw new Error('Failed to decrypt data - data may be corrupted');
+  }
+}
+
+/**
+ * Check if data is encrypted (basic heuristic)
+ */
+export function isEncrypted(data: string): boolean {
+  // Encrypted data should be at least 64 chars (iv + authTag)
+  // and should be valid hex
+  return data.length >= 64 && /^[0-9a-f]+$/i.test(data);
+}
+
+/**
+ * Safely encrypt if not already encrypted
+ */
+export function safeEncrypt(data: string): string {
+  if (!data) return '';
+  if (isEncrypted(data)) return data;
+  return encrypt(data);
+}
+
+/**
+ * Safely decrypt if encrypted
+ */
+export function safeDecrypt(data: string): string {
+  if (!data) return '';
+  if (!isEncrypted(data)) return data; // Already plaintext
+  return decrypt(data);
+}
+
+/**
+ * Generate a secure random token (for token rotation)
+ */
+export function generateSecureToken(length: number = 32): string {
+  return crypto.randomBytes(length).toString('base64url');
+}
+
+/**
+ * Hash sensitive data (one-way, for verification)
+ */
+export function hash(data: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(data)
+    .digest('hex');
+}

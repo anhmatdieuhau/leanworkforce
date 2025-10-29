@@ -1,6 +1,6 @@
 import {
   projects, milestones, candidates, fitScores, riskAlerts, jiraSettings,
-  savedJobs, applications, candidateActions, magicLinks,
+  savedJobs, applications, candidateActions, magicLinks, backgroundJobs,
   type Project, type InsertProject,
   type Milestone, type InsertMilestone,
   type Candidate, type InsertCandidate,
@@ -10,7 +10,8 @@ import {
   type SavedJob, type InsertSavedJob,
   type Application, type InsertApplication,
   type CandidateAction, type InsertCandidateAction,
-  type MagicLink, type InsertMagicLink
+  type MagicLink, type InsertMagicLink,
+  type BackgroundJob, type InsertBackgroundJob
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -78,6 +79,13 @@ export interface IStorage {
   markMagicLinkAsUsed(token: string): Promise<MagicLink | undefined>;
   invalidateOldMagicLinks(email: string): Promise<void>;
   getRecentMagicLinksByEmail(email: string, sinceMinutes: number): Promise<MagicLink[]>;
+  
+  // Background Jobs
+  createJob(job: InsertBackgroundJob): Promise<BackgroundJob>;
+  getJob(id: string): Promise<BackgroundJob | undefined>;
+  updateJob(id: string, data: Partial<InsertBackgroundJob>): Promise<BackgroundJob | undefined>;
+  getPendingJobs(limit: number): Promise<BackgroundJob[]>;
+  getJobsByUser(userId: string): Promise<BackgroundJob[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -363,6 +371,43 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(magicLinks.createdAt));
+  }
+
+  // Background Jobs
+  async createJob(insertJob: InsertBackgroundJob): Promise<BackgroundJob> {
+    const [job] = await db.insert(backgroundJobs).values(insertJob).returning();
+    return job;
+  }
+
+  async getJob(id: string): Promise<BackgroundJob | undefined> {
+    const [job] = await db.select().from(backgroundJobs).where(eq(backgroundJobs.id, id));
+    return job || undefined;
+  }
+
+  async updateJob(id: string, data: Partial<InsertBackgroundJob>): Promise<BackgroundJob | undefined> {
+    const [job] = await db
+      .update(backgroundJobs)
+      .set(data)
+      .where(eq(backgroundJobs.id, id))
+      .returning();
+    return job || undefined;
+  }
+
+  async getPendingJobs(limit: number): Promise<BackgroundJob[]> {
+    return await db
+      .select()
+      .from(backgroundJobs)
+      .where(eq(backgroundJobs.status, "pending"))
+      .orderBy(backgroundJobs.createdAt)
+      .limit(limit);
+  }
+
+  async getJobsByUser(userId: string): Promise<BackgroundJob[]> {
+    return await db
+      .select()
+      .from(backgroundJobs)
+      .where(eq(backgroundJobs.userId, userId))
+      .orderBy(desc(backgroundJobs.createdAt));
   }
 }
 

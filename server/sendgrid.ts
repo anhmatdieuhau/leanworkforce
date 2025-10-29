@@ -72,3 +72,70 @@ export async function sendMagicLinkEmail(to: string, magicLink: string): Promise
   await client.send(msg);
   console.log(`✅ Magic link email sent to ${to}`);
 }
+
+/**
+ * Send job completion notification email
+ */
+export async function sendJobCompletionEmail(
+  to: string, 
+  jobType: string, 
+  status: "success" | "failed",
+  errorMessage?: string
+): Promise<void> {
+  try {
+    const {client, fromEmail} = await getUncachableSendGridClient();
+    
+    const jobTypeLabel = {
+      'cv_processing': 'CV Processing',
+      'fit_score_calculation': 'Job Matching',
+      'skill_map_generation': 'Skill Analysis',
+      'jira_sync': 'Jira Synchronization'
+    }[jobType] || jobType;
+    
+    const subject = status === "success" 
+      ? `✓ ${jobTypeLabel} Completed` 
+      : `✗ ${jobTypeLabel} Failed`;
+    
+    const successMessage = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #000000;">Job Completed Successfully</h2>
+        <p>Your ${jobTypeLabel} has been completed successfully.</p>
+        <p>Log in to view your results:</p>
+        <div style="margin: 30px 0;">
+          <a href="${process.env.REPLIT_DOMAINS || 'http://localhost:5000'}" 
+             style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            View Dashboard
+          </a>
+        </div>
+      </div>
+    `;
+    
+    const failureMessage = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #000000;">Job Failed</h2>
+        <p>Unfortunately, your ${jobTypeLabel} job encountered an error.</p>
+        ${errorMessage ? `<p style="color: #666666;">Error: ${errorMessage}</p>` : ''}
+        <p>Please try again or contact support if the issue persists.</p>
+        <div style="margin: 30px 0;">
+          <a href="${process.env.REPLIT_DOMAINS || 'http://localhost:5000'}" 
+             style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            Return to Dashboard
+          </a>
+        </div>
+      </div>
+    `;
+    
+    const msg = {
+      to,
+      from: fromEmail,
+      subject,
+      html: status === "success" ? successMessage : failureMessage
+    };
+    
+    await client.send(msg);
+    console.log(`✅ Job completion email sent to ${to} (${status})`);
+  } catch (error: any) {
+    console.error(`Failed to send job completion email: ${error.message}`);
+    // Don't throw - email failure shouldn't break the job
+  }
+}

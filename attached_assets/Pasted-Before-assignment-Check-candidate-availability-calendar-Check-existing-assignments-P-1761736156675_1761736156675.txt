@@ -1,0 +1,192 @@
+Before assignment:
+  → Check candidate availability calendar
+  → Check existing assignments
+  → Prevent double-booking
+  → Require candidate confirmation
+```
+
+---
+
+### **2. Incomplete Edge Cases**
+
+#### **Scenario 1: Multiple Business Users Compete for Same Candidate**
+```
+Current behavior: UNDEFINED
+Questions:
+- First-come-first-serve?
+- Auction/bidding system?
+- Candidate chooses?
+
+Recommended: Priority scoring
+  → Fit score (40%) 
+  → Project budget (30%)
+  → Candidate preference (30%)
+```
+
+#### **Scenario 2: Candidate Rejects Assignment After Backup Activated**
+```
+Current behavior: UNDEFINED
+Questions:
+- What happens to primary candidate?
+- Can primary be re-assigned?
+- How to handle duplicate assignments?
+
+Recommended: State machine
+  pending → offered → accepted → active → completed
+  Each state has clear transition rules
+```
+
+#### **Scenario 3: Jira Sync Fails or Data Inconsistent**
+```
+Current behavior: Likely crashes
+Questions:
+- What if Jira returns 500 error?
+- What if milestone not found in Jira?
+- How to handle manual Jira edits?
+
+Recommended: Sync status tracking
+  → Last sync timestamp
+  → Sync error log
+  → Manual override option for business user
+```
+
+---
+
+### **3. Business Logic Gaps**
+
+#### **Gap 1: Payment/Pricing Model Missing**
+```
+Questions:
+- How are candidates paid?
+- How are business users charged?
+- Commission structure?
+
+Need to define:
+  → Pricing model (subscription? per-hire? commission?)
+  → Payment workflows
+  → Invoice generation
+  → Escrow for milestone-based payments?
+```
+
+#### **Gap 2: Candidate Evaluation After Assignment**
+```
+Current: No feedback loop
+Questions:
+- How to evaluate candidate performance?
+- Impact on future fit scores?
+- Rating system?
+
+Recommended: Post-project review
+  → Business rates candidate (1-5 stars)
+  → Affects future fit score weighting
+  → Builds candidate reputation score
+```
+
+#### **Gap 3: Project Cancellation Policy**
+```
+Current: UNDEFINED
+Questions:
+- What if business cancels project mid-way?
+- Compensation for candidates?
+- Penalty for business user?
+
+Recommended: Cancellation rules
+  → Before assignment: Full refund
+  → After assignment but <7 days: 50% compensation to candidate
+  → After 7 days: Full payment to candidate + penalty to business
+```
+
+---
+
+## 🔄 **Workflow Improvements Needed**
+
+### **Improvement 1: Add Confirmation Steps**
+
+**Current**:
+```
+Create project → Auto-generate skill maps → Auto-calculate fit scores
+```
+
+**Recommended**:
+```
+Create project 
+→ AI suggests skill map 
+→ Business reviews/edits ✅ (human-in-the-loop)
+→ Confirm skill map
+→ Calculate fit scores
+→ Business reviews top 10 candidates
+→ Select candidates to notify ✅
+```
+
+**Why**: Business might want to adjust AI suggestions, prevent irrelevant notifications
+
+---
+
+### **Improvement 2: Candidate Application Workflow**
+
+**Current**:
+```
+Candidate sees project (>70% fit) → Can view details
+Status: "pending" forever?
+```
+
+**Recommended**:
+```
+Candidate views project
+→ "Save" (bookmark) or "Apply" (express interest)
+→ If "Apply":
+   → Business notified
+   → Candidate status: "applied"
+   → Business reviews → "interview" → "accept/reject"
+→ If "Save":
+   → No notification
+   → Candidate can apply later
+```
+
+**Why**: Clear distinction between browsing vs serious interest
+
+---
+
+### **Improvement 3: Risk Alert Escalation**
+
+**Current**:
+```
+High risk → Auto-activate backup
+```
+
+**Recommended**:
+```
+Delay detected (>20%)
+→ Low risk: Monitor only, notify business
+→ Medium risk: Notify business + prepare backup list
+→ High risk: Notify business + backup, require decision in 24h
+→ Critical risk (>40% delay): Auto-activate backup + escalate to management
+```
+
+**Why**: Different risk levels need different responses, not all need immediate backup
+
+---
+
+## 📊 **Business Metrics Missing**
+
+### **Need to Track**:
+```
+1. Time-to-Fill Metrics
+   - Avg time: Project created → Candidate assigned
+   - Target: <48 hours for high-fit matches
+
+2. Candidate Utilization Rate
+   - % of time candidates are assigned vs available
+   - Target: 60-80% (avoid burnout)
+
+3. Fit Score Accuracy
+   - Business rating after project vs predicted fit score
+   - Adjust AI model if correlation <0.7
+
+4. Backup Activation Success Rate
+   - % of backup activations that prevented project delay
+   - If <50%, reconsider activation threshold
+
+5. Churn Metrics
+   - Candidate drop-off rate after signup
+   - Business user retention after first project

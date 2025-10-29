@@ -1324,39 +1324,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark as used
       await storage.markMagicLinkAsUsed(token);
 
-      // Get or create user account
+      // Get or create user account with cross-portal email uniqueness check
       let userId: string;
-      if (magicLink.role === "candidate") {
-        let user = await storage.getCandidateByEmail(magicLink.email);
-        
-        // Create shadow account if doesn't exist
+      let actualRole: "business" | "candidate";
+      
+      // Check if email exists in candidate portal
+      const existingCandidate = await storage.getCandidateByEmail(magicLink.email);
+      
+      // Check magic_links history to detect previous registrations
+      // Look at ALL history (30 days) to preserve role consistency
+      const previousMagicLinks = await storage.getRecentMagicLinksByEmail(magicLink.email, 30 * 24 * 60);
+      
+      const hasBusinessHistory = previousMagicLinks.some(
+        (link: any) => link.role === "business" && link.used
+      );
+      const hasCandidateHistory = previousMagicLinks.some(
+        (link: any) => link.role === "candidate" && link.used
+      );
+      
+      // Enforce "one email = one role" architecture based on history
+      if (hasCandidateHistory && magicLink.role === "business") {
+        // Email already used as candidate, preserve candidate role
+        console.log(`⚠️  Email ${magicLink.email} already registered as candidate (history check). Preserving candidate role.`);
+        let user = existingCandidate;
         if (!user) {
+          // Shouldn't happen, but handle gracefully
           user = await storage.createCandidate({
             email: magicLink.email,
-            name: magicLink.email.split("@")[0], // Default name from email
+            name: magicLink.email.split("@")[0],
           });
         }
         userId = user.id;
+        actualRole = "candidate";
+      } else if (hasBusinessHistory && magicLink.role === "candidate") {
+        // Email already used as business, preserve business role
+        console.log(`⚠️  Email ${magicLink.email} already registered as business (history check). Preserving business role.`);
+        userId = magicLink.email;
+        actualRole = "business";
+      } else if (magicLink.role === "candidate") {
+        // New or existing candidate (no conflicts)
+        let user = existingCandidate;
+        if (!user) {
+          user = await storage.createCandidate({
+            email: magicLink.email,
+            name: magicLink.email.split("@")[0],
+          });
+          console.log(`✨ New candidate user created: ${magicLink.email}`);
+        }
+        userId = user.id;
+        actualRole = "candidate";
       } else {
         // Business user - use email as userId
         userId = magicLink.email;
+        actualRole = "business";
+        if (!hasBusinessHistory) {
+          console.log(`✨ New business user: ${magicLink.email}`);
+        }
       }
 
-      // Create server-side session
+      // Create server-side session with ACTUAL role (may differ from requested)
       req.session.userId = userId;
       req.session.email = magicLink.email;
-      req.session.role = magicLink.role as "business" | "candidate";
+      req.session.role = actualRole; // Use actualRole, not magicLink.role
 
-      console.log(`✅ Session created for ${magicLink.email} (role: ${magicLink.role})`);
+      console.log(`✅ Session created for ${magicLink.email} (role: ${actualRole}${actualRole !== magicLink.role ? `, requested: ${magicLink.role}` : ''})`);
 
       res.json({
         success: true,
         user: {
           id: userId,
           email: magicLink.email,
-          role: magicLink.role,
+          role: actualRole, // Return actual role
         },
-        redirectTo: magicLink.role === "business" ? "/business" : "/candidate/dashboard",
+        redirectTo: actualRole === "business" ? "/business" : "/candidate/dashboard",
       });
     } catch (error: any) {
       console.error("Error verifying magic link:", error);

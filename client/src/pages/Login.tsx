@@ -2,12 +2,15 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Loader2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Mail, Loader2, CheckCircle2, AlertCircle, Clock, Briefcase, User } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"candidate" | "business">("candidate");
   const [isLoading, setIsLoading] = useState(false);
   const [linkSent, setLinkSent] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +30,10 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await apiRequest("POST", "/api/auth/request-magic-link", { email });
+      const response = await apiRequest("POST", "/api/auth/request-magic-link", { 
+        email,
+        requestedRole: role 
+      });
       
       setLinkSent(true);
       setCanResend(false);
@@ -98,9 +104,13 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             {!linkSent ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
+                  <Label htmlFor="email" className="text-sm font-medium mb-2 block">
+                    Email Address
+                  </Label>
                   <Input
+                    id="email"
                     type="email"
                     placeholder="your.email@example.com"
                     value={email}
@@ -108,7 +118,6 @@ export default function Login() {
                     disabled={isLoading}
                     autoFocus
                     data-testid="input-email"
-                    className="text-center"
                   />
                   {error && (
                     <div className="flex items-center gap-2 mt-2 text-sm text-destructive">
@@ -116,6 +125,58 @@ export default function Login() {
                       <span data-testid="error-message">{error}</span>
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">
+                    Login As
+                  </Label>
+                  <RadioGroup 
+                    value={role} 
+                    onValueChange={(value) => setRole(value as "candidate" | "business")}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div>
+                      <RadioGroupItem
+                        value="candidate"
+                        id="candidate"
+                        className="peer sr-only"
+                        data-testid="radio-candidate"
+                      />
+                      <Label
+                        htmlFor="candidate"
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover-elevate cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                      >
+                        <User className="mb-3 h-6 w-6" />
+                        <div className="text-center">
+                          <div className="font-semibold">Candidate</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Find opportunities
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div>
+                      <RadioGroupItem
+                        value="business"
+                        id="business"
+                        className="peer sr-only"
+                        data-testid="radio-business"
+                      />
+                      <Label
+                        htmlFor="business"
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover-elevate cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                      >
+                        <Briefcase className="mb-3 h-6 w-6" />
+                        <div className="text-center">
+                          <div className="font-semibold">Business</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Find talent
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 <Button
@@ -137,7 +198,7 @@ export default function Login() {
                   )}
                 </Button>
 
-                <p className="text-xs text-center text-muted-foreground mt-4">
+                <p className="text-xs text-center text-muted-foreground">
                   No password needed. We'll email you a secure link to log in.
                 </p>
               </form>

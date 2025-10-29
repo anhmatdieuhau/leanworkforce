@@ -1154,7 +1154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request a magic link
   app.post("/api/auth/request-magic-link", async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email, requestedRole } = req.body;
       
       if (!email || !email.includes("@")) {
         return res.status(400).json({ error: "Valid email is required" });
@@ -1173,31 +1173,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Invalidate all previous unused magic links for this email
       await storage.invalidateOldMagicLinks(emailLower);
 
-      // Check if user exists and determine role
-      let role = "candidate"; // Default role
-      let userId = null;
-      
+      // Check if user exists and determine available roles
       const candidate = await storage.getCandidateByEmail(emailLower);
-      if (candidate) {
+      const allProjects = await storage.getAllProjects();
+      const userProjects = allProjects.filter(p => p.businessUserId === emailLower);
+      
+      const hasCandidate = !!candidate;
+      const hasBusiness = userProjects.length > 0;
+      
+      console.log(`🔍 Role detection for ${emailLower}: candidate=${hasCandidate}, business=${hasBusiness}, requested=${requestedRole}`);
+      
+      // Determine final role
+      let role: "candidate" | "business" = "candidate";
+      let userId: string | null = null;
+      
+      if (requestedRole === "business" && hasBusiness) {
+        // User requested business and has business access
+        role = "business";
+        userId = emailLower;
+        console.log(`✅ Using requested role: business`);
+      } else if (requestedRole === "candidate" && hasCandidate) {
+        // User requested candidate and has candidate access
         role = "candidate";
         userId = candidate.id;
-        console.log(`🔍 Role detection for ${emailLower}: Found candidate → role = candidate`);
+        console.log(`✅ Using requested role: candidate`);
+      } else if (hasBusiness && !hasCandidate) {
+        // Only business access available
+        role = "business";
+        userId = emailLower;
+        console.log(`✅ Only business access available`);
+      } else if (hasCandidate && !hasBusiness) {
+        // Only candidate access available
+        role = "candidate";
+        userId = candidate.id;
+        console.log(`✅ Only candidate access available`);
+      } else if (hasBusiness && hasCandidate) {
+        // Dual-role user - default to candidate if no preference
+        role = "candidate";
+        userId = candidate.id;
+        console.log(`⚠️ Dual-role user, defaulting to candidate`);
       } else {
-        // Check if email belongs to a business user (check project ownership)
-        const allProjects = await storage.getAllProjects();
-        const userProjects = allProjects.filter(p => p.businessUserId === emailLower);
-        
-        console.log(`🔍 Role detection for ${emailLower}: Checking projects... found ${userProjects.length} projects`);
-        
-        if (userProjects.length > 0) {
-          role = "business";
-          userId = emailLower; // Use email as business user ID
-          console.log(`🔍 Role detection for ${emailLower}: Has projects → role = business`);
-        } else {
-          // Default to candidate for new users (shadow accounts will be created)
-          role = "candidate";
-          console.log(`🔍 Role detection for ${emailLower}: No projects → role = candidate (default)`);
-        }
+        // New user - default to candidate (shadow account will be created)
+        role = "candidate";
+        console.log(`🆕 New user, defaulting to candidate`);
       }
 
       // Generate cryptographically secure token

@@ -188,16 +188,11 @@ export default function CandidateDashboard() {
                     </CardHeader>
                     <CardContent className="space-y-3 flex-1 flex flex-col">
                       <div className="flex-1">
-                        <p className="text-sm font-medium mb-1">{rec.milestoneName}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {rec.description}
-                        </p>
-                        
                         {/* Why this job? toggle */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="mt-2 h-auto p-0 text-xs hover:no-underline"
+                          className="h-auto p-0 text-xs hover:no-underline"
                           onClick={() => setExpandedExplainer(isExpanded ? null : rec.id)}
                           data-testid={`button-toggle-explainer-${rec.id}`}
                         >

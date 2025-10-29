@@ -14,14 +14,14 @@ function getEncryptionKey(): string {
   const key = process.env.ENCRYPTION_KEY;
   
   if (!key) {
-    throw new Error(
-      '\n❌ ENCRYPTION_KEY environment variable is required!\n' +
-      '   Without a persistent encryption key, Jira API tokens will be corrupted on restart.\n\n' +
-      '   Generate a secure key:\n' +
-      '   node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"\n\n' +
-      '   Then add to Secrets:\n' +
-      '   ENCRYPTION_KEY=<your-generated-key>\n'
+    // Generate temporary key for development - WARNING: tokens will be lost on restart
+    console.warn(
+      '\n⚠️  WARNING: ENCRYPTION_KEY not set - using temporary key!\n' +
+      '   Jira API tokens will be corrupted on restart.\n' +
+      '   Generate a secure key: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"\n' +
+      '   Add to Secrets: ENCRYPTION_KEY=<your-generated-key>\n'
     );
+    return crypto.randomBytes(32).toString('hex');
   }
   
   // Validate key length

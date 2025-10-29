@@ -12,6 +12,9 @@ export const projects = pgTable("projects", {
   description: text("description").notNull(),
   status: text("status").notNull().default("active"), // active, completed, on-hold
   jiraProjectKey: text("jira_project_key"),
+  lastJiraSyncAt: timestamp("last_jira_sync_at"),
+  lastJiraSyncStatus: text("last_jira_sync_status"), // success, failed, partial
+  lastJiraSyncError: text("last_jira_sync_error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -341,3 +344,30 @@ export const insertBackgroundJobSchema = createInsertSchema(backgroundJobs).omit
 
 export type InsertBackgroundJob = z.infer<typeof insertBackgroundJobSchema>;
 export type BackgroundJob = typeof backgroundJobs.$inferSelect;
+
+// ========== JIRA SYNC LOGS ==========
+export const jiraSyncLogs = pgTable("jira_sync_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessUserId: varchar("business_user_id").notNull(),
+  syncType: text("sync_type").notNull(), // import_projects, sync_project, sync_milestone
+  status: text("status").notNull(), // success, failed, partial
+  projectId: varchar("project_id"),
+  jiraProjectKey: text("jira_project_key"),
+  milestonesCreated: integer("milestones_created").default(0),
+  milestonesUpdated: integer("milestones_updated").default(0),
+  error: text("error"), // Error message if failed
+  errorDetails: jsonb("error_details"), // Detailed error stack/context
+  canRetry: boolean("can_retry").default(true),
+  retryCount: integer("retry_count").default(0),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertJiraSyncLogSchema = createInsertSchema(jiraSyncLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertJiraSyncLog = z.infer<typeof insertJiraSyncLogSchema>;
+export type JiraSyncLog = typeof jiraSyncLogs.$inferSelect;

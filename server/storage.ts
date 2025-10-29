@@ -1,6 +1,6 @@
 import {
   projects, milestones, candidates, fitScores, riskAlerts, jiraSettings,
-  savedJobs, applications, candidateActions, magicLinks, backgroundJobs,
+  savedJobs, applications, candidateActions, magicLinks, backgroundJobs, jiraSyncLogs,
   type Project, type InsertProject,
   type Milestone, type InsertMilestone,
   type Candidate, type InsertCandidate,
@@ -11,7 +11,8 @@ import {
   type Application, type InsertApplication,
   type CandidateAction, type InsertCandidateAction,
   type MagicLink, type InsertMagicLink,
-  type BackgroundJob, type InsertBackgroundJob
+  type BackgroundJob, type InsertBackgroundJob,
+  type JiraSyncLog, type InsertJiraSyncLog
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";

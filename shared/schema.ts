@@ -251,6 +251,46 @@ export const insertCandidateActionSchema = createInsertSchema(candidateActions).
 export type InsertCandidateAction = z.infer<typeof insertCandidateActionSchema>;
 export type CandidateAction = typeof candidateActions.$inferSelect;
 
+// ========== BUSINESS INTERESTS (Multi-Business Competition) ==========
+export const businessInterests = pgTable("business_interests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessUserId: varchar("business_user_id").notNull(),
+  candidateId: varchar("candidate_id").notNull().references(() => candidates.id, { onDelete: "cascade" }),
+  milestoneId: varchar("milestone_id").notNull().references(() => milestones.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("interested"), // interested, offered, accepted, rejected, withdrawn
+  offerBudget: integer("offer_budget"), // Budget offered for this milestone
+  priorityScore: integer("priority_score"), // Calculated: fit 40% + budget 30% + preference 30%
+  candidatePreference: integer("candidate_preference"), // Candidate's rating 1-5 for this opportunity
+  notes: text("notes"), // Business notes about why they want this candidate
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const businessInterestsRelations = relations(businessInterests, ({ one }) => ({
+  candidate: one(candidates, {
+    fields: [businessInterests.candidateId],
+    references: [candidates.id],
+  }),
+  milestone: one(milestones, {
+    fields: [businessInterests.milestoneId],
+    references: [milestones.id],
+  }),
+  project: one(projects, {
+    fields: [businessInterests.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const insertBusinessInterestSchema = createInsertSchema(businessInterests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBusinessInterest = z.infer<typeof insertBusinessInterestSchema>;
+export type BusinessInterest = typeof businessInterests.$inferSelect;
+
 // ========== SKILL MAP TYPE ==========
 export const skillMapSchema = z.object({
   milestone: z.string(),

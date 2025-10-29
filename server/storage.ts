@@ -1,6 +1,7 @@
 import {
   projects, milestones, candidates, fitScores, riskAlerts, jiraSettings,
   savedJobs, applications, candidateActions, magicLinks, backgroundJobs, jiraSyncLogs,
+  businessInterests,
   type Project, type InsertProject,
   type Milestone, type InsertMilestone,
   type Candidate, type InsertCandidate,
@@ -12,7 +13,8 @@ import {
   type CandidateAction, type InsertCandidateAction,
   type MagicLink, type InsertMagicLink,
   type BackgroundJob, type InsertBackgroundJob,
-  type JiraSyncLog, type InsertJiraSyncLog
+  type JiraSyncLog, type InsertJiraSyncLog,
+  type BusinessInterest, type InsertBusinessInterest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -94,6 +96,14 @@ export interface IStorage {
   getJiraSyncLogs(businessUserId: string, limit?: number): Promise<JiraSyncLog[]>;
   getJiraSyncLogsByProject(projectId: string): Promise<JiraSyncLog[]>;
   getFailedJiraSyncLogs(businessUserId: string): Promise<JiraSyncLog[]>;
+  
+  // Business Interests (Multi-Business Competition)
+  createBusinessInterest(interest: InsertBusinessInterest): Promise<BusinessInterest>;
+  updateBusinessInterest(id: string, data: Partial<InsertBusinessInterest>): Promise<BusinessInterest | undefined>;
+  getBusinessInterest(id: string): Promise<BusinessInterest | undefined>;
+  getBusinessInterestsByCandidate(candidateId: string): Promise<BusinessInterest[]>;
+  getBusinessInterestsByMilestone(milestoneId: string): Promise<BusinessInterest[]>;
+  getCompetingOffersForCandidate(candidateId: string): Promise<BusinessInterest[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -457,6 +467,57 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(jiraSyncLogs.createdAt));
+  }
+  
+  // Business Interests (Multi-Business Competition)
+  async createBusinessInterest(insertInterest: InsertBusinessInterest): Promise<BusinessInterest> {
+    const [interest] = await db.insert(businessInterests).values(insertInterest).returning();
+    return interest;
+  }
+  
+  async updateBusinessInterest(id: string, data: Partial<InsertBusinessInterest>): Promise<BusinessInterest | undefined> {
+    const [interest] = await db.update(businessInterests).set({
+      ...data,
+      updatedAt: new Date()
+    }).where(eq(businessInterests.id, id)).returning();
+    return interest || undefined;
+  }
+  
+  async getBusinessInterest(id: string): Promise<BusinessInterest | undefined> {
+    const [interest] = await db
+      .select()
+      .from(businessInterests)
+      .where(eq(businessInterests.id, id));
+    return interest || undefined;
+  }
+  
+  async getBusinessInterestsByCandidate(candidateId: string): Promise<BusinessInterest[]> {
+    return await db
+      .select()
+      .from(businessInterests)
+      .where(eq(businessInterests.candidateId, candidateId))
+      .orderBy(desc(businessInterests.createdAt));
+  }
+  
+  async getBusinessInterestsByMilestone(milestoneId: string): Promise<BusinessInterest[]> {
+    return await db
+      .select()
+      .from(businessInterests)
+      .where(eq(businessInterests.milestoneId, milestoneId))
+      .orderBy(desc(businessInterests.createdAt));
+  }
+  
+  async getCompetingOffersForCandidate(candidateId: string): Promise<BusinessInterest[]> {
+    return await db
+      .select()
+      .from(businessInterests)
+      .where(
+        and(
+          eq(businessInterests.candidateId, candidateId),
+          eq(businessInterests.status, "interested")
+        )
+      )
+      .orderBy(desc(businessInterests.priorityScore));
   }
 }
 

@@ -14,6 +14,7 @@ import CandidateProfile from "@/pages/CandidateProfile";
 import Login from "@/pages/Login";
 import VerifyMagicLink from "@/pages/VerifyMagicLink";
 import CandidateUpload from "@/pages/CandidateUpload";
+import CandidateLanding from "@/pages/CandidateLanding";
 
 function Router() {
   return (
@@ -39,8 +40,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      {/* Candidate routes - /candidate open for CV upload, dashboard requires auth */}
-      <Route path="/candidate" component={CandidateUpload} />
+      {/* Candidate routes - /candidate landing page, dashboard requires auth */}
+      <Route path="/candidate" component={CandidateLanding} />
+      <Route path="/candidate/upload" component={CandidateUpload} />
       <Route path="/candidate/dashboard">
         <ProtectedRoute>
           <CandidateDashboard />

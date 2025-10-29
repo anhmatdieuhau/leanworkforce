@@ -1189,6 +1189,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== BUSINESS INTERESTS (Multi-Business Competition) ==========
+  
+  // Business expresses interest in a candidate for a milestone
+  app.post("/api/business-interests", async (req, res) => {
+    try {
+      const { businessUserId, candidateId, milestoneId, projectId, offerBudget, notes } = req.body;
+      
+      // Get fit score to calculate priority
+      const fitScores = await storage.getFitScoresByCandidate(candidateId);
+      const fitScore = fitScores.find(f => f.milestoneId === milestoneId);
+      
+      if (!fitScore) {
+        return res.status(404).json({ error: "Fit score not found for this candidate" });
+      }
+      
+      // Calculate initial priority score (no candidate preference yet)
+      const { calculatePriorityScore } = await import("./priority-scorer.js");
+      const { priorityScore } = calculatePriorityScore({
+        fitScore: fitScore.score,
+        offerBudget: offerBudget || 0,
+      });
+      
+      const interest = await storage.createBusinessInterest({
+        businessUserId,
+        candidateId,
+        milestoneId,
+        projectId,
+        status: "interested",
+        offerBudget: offerBudget || null,
+        priorityScore,
+        notes: notes || null,
+      });
+      
+      res.json(interest);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get competing offers for a candidate (top 3)
+  app.get("/api/business-interests/candidate/:candidateId/competing", async (req, res) => {
+    try {
+      const { candidateId } = req.params;
+      const interests = await storage.getCompetingOffersForCandidate(candidateId);
+      
+      // Recalculate priority scores with normalized budgets
+      const { calculateCompetingPriorityScores, getTopCompetingOffers } = await import("./priority-scorer.js");
+      
+      // Get fit scores for each interest
+      const enrichedInterests = await Promise.all(
+        interests.map(async (interest) => {
+          const fitScores = await storage.getFitScoresByCandidate(interest.candidateId);
+          const fitScore = fitScores.find(f => f.milestoneId === interest.milestoneId);
+          const milestone = await storage.getMilestone(interest.milestoneId);
+          const project = await storage.getProject(interest.projectId);
+          
+          return {
+            ...interest,
+            fitScore: fitScore?.score || 0,
+            milestone,
+            project,
+          };
+        })
+      );
+      
+      // Recalculate scores
+      const scoredInterests = calculateCompetingPriorityScores(
+        enrichedInterests.map(i => ({
+          id: i.id,
+          fitScore: i.fitScore,
+          offerBudget: i.offerBudget || 0,
+          candidatePreference: i.candidatePreference || undefined,
+        }))
+      );
+      
+      // Merge scores back into interests
+      const interestsWithScores = enrichedInterests.map(interest => {
+        const scored = scoredInterests.find(s => s.id === interest.id);
+        return {
+          ...interest,
+          priorityScore: scored?.priorityScore || interest.priorityScore || 0,
+          breakdown: scored?.breakdown,
+        };
+      });
+      
+      // Get top 3
+      const topOffers = getTopCompetingOffers(interestsWithScores, 3);
+      
+      res.json(topOffers);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get all business interests for a milestone
+  app.get("/api/business-interests/milestone/:milestoneId", async (req, res) => {
+    try {
+      const { milestoneId } = req.params;
+      const interests = await storage.getBusinessInterestsByMilestone(milestoneId);
+      res.json(interests);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Update business interest (e.g., adjust offer)
+  app.patch("/api/business-interests/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { offerBudget, status, notes } = req.body;
+      
+      // Get existing interest
+      const existing = await storage.getBusinessInterest(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Business interest not found" });
+      }
+      
+      // Recalculate priority score if budget changed
+      let priorityScore = existing.priorityScore;
+      if (offerBudget !== undefined) {
+        const fitScores = await storage.getFitScoresByCandidate(existing.candidateId);
+        const fitScore = fitScores.find(f => f.milestoneId === existing.milestoneId);
+        
+        if (fitScore) {
+          const { calculatePriorityScore } = await import("./priority-scorer.js");
+          const result = calculatePriorityScore({
+            fitScore: fitScore.score,
+            offerBudget,
+            candidatePreference: existing.candidatePreference || undefined,
+          });
+          priorityScore = result.priorityScore;
+        }
+      }
+      
+      const updated = await storage.updateBusinessInterest(id, {
+        offerBudget: offerBudget !== undefined ? offerBudget : existing.offerBudget,
+        status: status || existing.status,
+        notes: notes !== undefined ? notes : existing.notes,
+        priorityScore,
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Candidate rates an opportunity
+  app.post("/api/business-interests/:id/rate", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating } = req.body; // 1-5 stars
+      
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be between 1 and 5" });
+      }
+      
+      const existing = await storage.getBusinessInterest(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Business interest not found" });
+      }
+      
+      // Recalculate priority score with candidate preference
+      const fitScores = await storage.getFitScoresByCandidate(existing.candidateId);
+      const fitScore = fitScores.find(f => f.milestoneId === existing.milestoneId);
+      
+      if (!fitScore) {
+        return res.status(404).json({ error: "Fit score not found" });
+      }
+      
+      const { calculatePriorityScore } = await import("./priority-scorer.js");
+      const { priorityScore } = calculatePriorityScore({
+        fitScore: fitScore.score,
+        offerBudget: existing.offerBudget || 0,
+        candidatePreference: rating,
+      });
+      
+      const updated = await storage.updateBusinessInterest(id, {
+        candidatePreference: rating,
+        priorityScore,
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ========== BACKGROUND JOBS ==========
   
   // Get job status
